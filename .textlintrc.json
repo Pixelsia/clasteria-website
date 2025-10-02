@@ -1,0 +1,47 @@
+{
+  "plugins": {
+    "@textlint/text": { "extensions": [".vue"] }
+  },
+  "rules": {
+    // preset
+    "preset-japanese": true,
+    "@textlint-ja/preset-ai-writing": true,
+
+    // format
+    "preset-ja-spacing": {
+      "ja-space-between-half-and-full-width": {
+        "space": ["alphabets", "numbers"]
+      },
+      "ja-no-space-between-full-width": false,
+      "ja-space-around-code": { "before": true, "after": true },
+      "ja-space-around-link": { "before": true, "after": true }
+    },
+    "incremental-headers": true,
+
+    // grammar
+    "@textlint-ja/textlint-rule-no-insert-dropping-sa": true,
+    "@textlint-ja/textlint-rule-no-dropping-i": true,
+    "prefer-tari-tari": true,
+    "ja-no-abusage": true,
+    "ja-no-redundant-expression": true,
+
+    // spelling
+    "ja-overlooked-typo": true,
+    "joyo-kanji": true,
+    "ja-hiragana-keishikimeishi": true,
+    "ja-hiragana-fukushi": true,
+    "ja-hiragana-hojodoushi": true,
+    "@textlint-ja/no-synonyms": true,
+    "ja-no-orthographic-variants": true,
+
+    // others
+    "ja-no-inappropriate-words": true,
+    "date-weekday-mismatch": true
+  },
+  "filters": {
+    "comments": true,
+    "allowlist": {
+      "allow": ["々"]
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "recommendations": [
+    // languages
+    "yzhang.markdown-all-in-one",
+    "redhat.vscode-yaml",
+
+    // frameworks / libraries
+    "vue.volar",
+    "nuxt.mdc",
+    "bradlc.vscode-tailwindcss",
+
+    // linters / formatters
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "3w36zj6.textlint",
+
+    // others
+    "wix.vscode-import-cost"
+  ]
+}

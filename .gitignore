@@ -1,24 +1,41 @@
+# Note that this .gitignore is referenced not only by Git but also by textlint!
+# Therefore, if you want to ignore a directory, you must first ignore its contents with a glob pattern.
+
 # Nuxt dev/build outputs
+.output/**
 .output
+.data/**
 .data
+.nuxt/**
 .nuxt
+.nitro/**
 .nitro
+.cache/**
 .cache
+dist/**
 dist
 
 # Node dependencies
+node_modules/**
 node_modules
 
 # Logs
+logs/**
 logs
 *.log
 
 # Misc
 .DS_Store
+.fleet/**
 .fleet
-.idea
+.idea/**
+# !.idea/settings-to-commit.xml
 
 # Local env files
 .env
 .env.*
 !.env.example
+
+# Linter caches
+.eslintcache
+.textlintcache

@@ -1,0 +1,34 @@
+{
+  "files.associations": {
+    "*.json": "jsonc",
+    "*.css": "tailwindcss",
+    "*.md": "markdown"
+  },
+  "editor.quickSuggestions": {
+    "strings": "on" // for Nuxt UI
+  },
+
+  // Format
+  "editor.tabSize": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+
+  // Lint
+  "eslint.useFlatConfig": true,
+  "eslint.validate": ["javascript", "typescript", "vue"],
+  "eslint.format.enable": true,
+
+  // Nuxt UI
+  "tailwindCSS.classAttributes": ["class", "ui"],
+  "tailwindCSS.experimental.classRegex": [
+    ["ui:\\s*{([^)]*)\\s*}", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+  ]
+}

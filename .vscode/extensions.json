@@ -3,6 +3,7 @@
     // languages
     "yzhang.markdown-all-in-one",
     "redhat.vscode-yaml",
+    "github.vscode-github-actions",
 
     // frameworks / libraries
     "vue.volar",

@@ -1,6 +1,6 @@
 {
   "plugins": {
-    "@textlint/text": { "extensions": [".vue"] }
+    "html": { "extensions": [".vue"] }
   },
   "rules": {
     // preset

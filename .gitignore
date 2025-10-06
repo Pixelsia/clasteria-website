@@ -36,6 +36,10 @@ logs
 .env.*
 !.env.example
 
+# Test coverage
+coverage/**
+coverage
+
 # Linter caches
 .eslintcache
 .textlintcache

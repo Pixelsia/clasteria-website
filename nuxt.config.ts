@@ -13,7 +13,7 @@ export default defineNuxtConfig({
     '@nuxt/ui',
   ],
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/main.css'],
 
   image: {
     quality: 75,

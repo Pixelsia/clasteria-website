@@ -11,6 +11,7 @@ export default withNuxt([
   {
     rules: {
       'max-len': ['error', { code: 120, ignoreTemplateLiterals: true, ignoreStrings: true }],
+      'vue/multi-word-component-names': 'off',
     },
   },
 ]);

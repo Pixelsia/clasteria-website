@@ -34,11 +34,10 @@ useSeoMeta({
       rel="canonical"
       :href="canonicalUrl"
     />
-    <Noscript>
-      このサイトは JavaScript が必須です。お使いのブラウザで JavaScript を有効にしてから、ページを再読み込みしてください。
-      / This site requires JavaScript. Please enable JavaScript in your browser and reload the page.
-    </Noscript>
   </Head>
+  <noscript>
+    <NoscriptPrompt />
+  </noscript>
   <UApp>
     <NuxtLayout>
       <NuxtPage />

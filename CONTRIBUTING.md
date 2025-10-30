@@ -16,7 +16,7 @@ Node.js v20 以降と pnpm がインストールされている必要があり�
 
 - [**GitHub Flow**](https://docs.github.com/ja/get-started/using-github/github-flow) を採用しています。
 - Branch を生やしたら、Draft Pull Request を作成してから開発を始めてください。
-  - Ready for review へ変更する前に、必ず `main` ブランチをマージして最新の状態にしてください。
+  - Ready for review へ変更する前に、必ず `main` Branch をマージして最新の状態にしてください。
 - Pull Request の説明には、対応する Issue と変更内容を簡潔に記載してください。
   - `close #00` のように記載すると、マージ時に自動で Issue がクローズされます。
   - 理由や背景は Pull Request の説明だけでなく、コード内にもコメントとして記載してください。
@@ -53,6 +53,7 @@ Node.js v20 以降と pnpm がインストールされている必要があり�
 
 - ユニットテストはコロケーション (テスト対象と同じディレクトリに配置) してください。
 - E2E テストは `e2e-tests/` ディレクトリに配置してください。
+- `main` Branch の最新のテストカバレッジは <https://pixelsia.github.io/pixelsia-website/coverage/> で確認できます。
 
 ### Lint
 
@@ -62,10 +63,10 @@ Node.js v20 以降と pnpm がインストールされている必要があり�
 
 パフォーマンスチューニングを行う際は、「推測するな、計測せよ」という原則に従い、根拠に基づいて最適化してください。計測には以下の方法をお勧めします。
 
-- Lighthouse レポート
-- ブラウザーの開発者ツールの Performance および Network タブ
+- ブラウザーの開発者ツールの Performance および Network および Lighthouse タブ
 - `pnpm analyze` コマンドで生成できるバンドル分析レポート
   - SSG を採用しているため、「Nitro server bundle stats」は無視してください。
+  - `main` Branch の最新のレポートは <https://pixelsia.github.io/pixelsia-website/analysis/> で確認できます。
 
 > [!Note]
 > ビルドで生成された HTML ファイルを調べると、`<style id="nuxt-ui-colors"></style>` 内の CSS が最適化されていないことに気づくかもしれません。

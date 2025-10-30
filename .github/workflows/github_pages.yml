@@ -12,25 +12,65 @@ permissions:
 jobs:
   analyze-bundle:
     runs-on: ubuntu-24.04
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
       - name: Install deps
-        run: |
-          corepack enable
-          pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Analyze bundle
         run: pnpm analyze --no-serve
-      - name: Collect pages bundle
+      - name: Collect bundle analysis
+        run: |
+          mkdir -p out/analysis
+          cp node_modules/.cache/nuxt/.nuxt/analyze/client.html out/analysis/index.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: out
+
+  coverage-report:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Generate coverage report
+        run: pnpm test:coverage || true
+      - name: Collect coverage report
         run: |
           mkdir -p out
-          cp node_modules/.cache/nuxt/.nuxt/analyze/client.html out/analysis.html
+          cp -r coverage out/coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: out
+
+  deploy:
+    needs: [analyze-bundle, coverage-report]
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download bundle analysis
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-analysis
+          path: out
+      - name: Download coverage report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: out
       - uses: actions/upload-pages-artifact@v4
         with:
           path: out

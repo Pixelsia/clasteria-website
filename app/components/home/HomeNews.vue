@@ -18,8 +18,8 @@ const newsItems = [
 <template>
   <section class="py-20">
     <UContainer>
-      <div class="bg-white dark:bg-neutral-700 border border-primary-100 dark:border-primary-700 rounded-3xl shadow-sm p-12">
-        <div class="flex justify-between items-center mb-8">
+      <div class="mb-8">
+        <div class="flex justify-between items-center">
           <div>
             <h2 class="text-2xl text-primary-900 font-bold">
               最新ニュース
@@ -36,6 +36,8 @@ const newsItems = [
             すべて見る
           </UButton>
         </div>
+      </div>
+      <div class="bg-white dark:bg-neutral-700 border border-primary-100 dark:border-primary-700 rounded-3xl shadow-sm p-12">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
           <NewsCard
             v-for="news in newsItems"

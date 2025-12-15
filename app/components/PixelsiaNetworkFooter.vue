@@ -28,7 +28,7 @@ const footerColumns = [
 </script>
 
 <template>
-  <footer class="bg-primary-900 dark:bg-neutral-900 border-t-8 border-secondary-600 dark:border-secondary-700 pt-14 pb-8">
+  <footer class="bg-primary-700 border-t-8 border-secondary-600 pt-14 pb-8">
     <UContainer>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
         <div class="text-primary-100">

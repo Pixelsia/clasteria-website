@@ -27,10 +27,12 @@ const features = [
 <template>
   <section class="py-20">
     <UContainer>
-      <SectionHeading
-        title="選べる3つのモード"
-        subtitle="目的に合わせて楽しく学べるコンテンツを用意しています"
-      />
+      <div class="mb-12">
+        <SectionHeading
+          title="選べる3つのモード"
+          subtitle="目的に合わせて楽しく学べるコンテンツを用意しています"
+        />
+      </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <FeatureCard
           v-for="feature in features"

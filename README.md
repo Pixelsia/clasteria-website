@@ -1,11 +1,13 @@
 # Pixelsia Website
 
-**&copy; 2025 Pixelsia**  
+**&copy; 2025 Pixelsia Network**  
 License: [**MIT License**](./LICENSE)
 
 Pixelsia 公式ウェブサイトのソースコード
 
+<!--
 本番環境: **<https://pixelsia.net/>**
+-->
 
 SSG (静的サイト生成) を採用し、Cloudflare Pages で配信しています。
 

@@ -1,2 +1,183 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+/* https://github.com/nuxt/ui/issues/3374 */
+@source "../../node_modules/@nuxt/ui";
+
+@layer theme {
+  :root {
+    /* Light mode colors */
+    /* Primary: #66aa55 */
+    --color-primary-50: #f6fbf4;
+    --color-primary-100: #ecf7e9;
+    --color-primary-200: #d9efd3;
+    --color-primary-300: #c5e7bc;
+    --color-primary-400: #b2dfa6;
+    --color-primary-500: #66aa55;
+    --color-primary-600: #5a9a4a;
+    --color-primary-700: #4a833e;
+    --color-primary-800: #3a6c33;
+    --color-primary-900: #2a5028;
+    --color-primary-950: #1a341a;
+    /* Secondary: #E17100 → #995533 */
+    --color-secondary-50: #fef5ef;
+    --color-secondary-100: #fce9df;
+    --color-secondary-200: #f9d6bf;
+    --color-secondary-300: #f3be8f;
+    --color-secondary-400: #eba45f;
+    --color-secondary-500: #e17100;
+    --color-secondary-600: #c65d00;
+    --color-secondary-700: #b35300;
+    --color-secondary-800: #a04700;
+    --color-secondary-900: #8d3d00;
+    --color-secondary-950: #5a2600;
+    /* Success: #66aa55 */
+    --color-success-50: #f6fbf4;
+    --color-success-100: #ecf7e9;
+    --color-success-200: #d9efd3;
+    --color-success-300: #c5e7bc;
+    --color-success-400: #b2dfa6;
+    --color-success-500: #66aa55;
+    --color-success-600: #5a9a4a;
+    --color-success-700: #4a833e;
+    --color-success-800: #3a6c33;
+    --color-success-900: #2a5028;
+    --color-success-950: #1a341a;
+    /* Info: #5588bb */
+    --color-info-50: #f4f9fd;
+    --color-info-100: #e8f3fb;
+    --color-info-200: #d1e7f7;
+    --color-info-300: #b9dbf3;
+    --color-info-400: #a1cfef;
+    --color-info-500: #5588bb;
+    --color-info-600: #4a79a8;
+    --color-info-700: #406a95;
+    --color-info-800: #365b82;
+    --color-info-900: #2c4c6f;
+    --color-info-950: #1a2d47;
+    /* Warning: #dd8855 */
+    --color-warning-50: #fef9f5;
+    --color-warning-100: #fdf3eb;
+    --color-warning-200: #fbe7d7;
+    --color-warning-300: #f9dbc3;
+    --color-warning-400: #f7cfaf;
+    --color-warning-500: #dd8855;
+    --color-warning-600: #c9774d;
+    --color-warning-700: #b56645;
+    --color-warning-800: #a1553d;
+    --color-warning-900: #8d4435;
+    --color-warning-950: #5a2d23;
+    /* Error: #dd5555 */
+    --color-error-50: #fef6f6;
+    --color-error-100: #fdeced;
+    --color-error-200: #fbd9db;
+    --color-error-300: #f9c6c9;
+    --color-error-400: #f7b3b7;
+    --color-error-500: #dd5555;
+    --color-error-600: #c94d4d;
+    --color-error-700: #b54545;
+    --color-error-800: #a13d3d;
+    --color-error-900: #8d3535;
+    --color-error-950: #5a2323;
+    /* Neutral: #F4F9F4 */
+    --color-neutral-50: #f9fbf9;
+    --color-neutral-100: #f3f7f3;
+    --color-neutral-200: #e8efe8;
+    --color-neutral-300: #dce7dc;
+    --color-neutral-400: #d1dfd1;
+    --color-neutral-500: #c6d7c6;
+    --color-neutral-600: #a3b8a3;
+    --color-neutral-700: #809980;
+    --color-neutral-800: #5d805d;
+    --color-neutral-900: #3a673a;
+    --color-neutral-950: #1a341a;
+  }
+
+  :root.dark {
+    /* Dark mode colors - inverted and adjusted for dark background */
+    /* Primary: brighter shade for dark mode */
+    --color-primary-50: #66aa55;
+    --color-primary-100: #7ab963;
+    --color-primary-200: #8ec871;
+    --color-primary-300: #a2d77f;
+    --color-primary-400: #b6e68d;
+    --color-primary-500: #c9f59b;
+    --color-primary-600: #d9efd3;
+    --color-primary-700: #ecf7e9;
+    --color-primary-800: #f6fbf4;
+    --color-primary-900: #ffffff;
+    --color-primary-950: #ffffff;
+    /* Secondary: brighter shade for dark mode */
+    --color-secondary-50: #e17100;
+    --color-secondary-100: #e68b1a;
+    --color-secondary-200: #eba533;
+    --color-secondary-300: #f0bf4d;
+    --color-secondary-400: #f5d966;
+    --color-secondary-500: #fae9d3;
+    --color-secondary-600: #fce9df;
+    --color-secondary-700: #fdf3eb;
+    --color-secondary-800: #fef9f5;
+    --color-secondary-900: #ffffff;
+    --color-secondary-950: #ffffff;
+    /* Success: same as primary */
+    --color-success-50: #66aa55;
+    --color-success-100: #7ab963;
+    --color-success-200: #8ec871;
+    --color-success-300: #a2d77f;
+    --color-success-400: #b6e68d;
+    --color-success-500: #c9f59b;
+    --color-success-600: #d9efd3;
+    --color-success-700: #ecf7e9;
+    --color-success-800: #f6fbf4;
+    --color-success-900: #ffffff;
+    --color-success-950: #ffffff;
+    /* Info */
+    --color-info-50: #5588bb;
+    --color-info-100: #6a97c7;
+    --color-info-200: #7fa6d3;
+    --color-info-300: #94b5df;
+    --color-info-400: #a9c4eb;
+    --color-info-500: #c8daf5;
+    --color-info-600: #d1e7f7;
+    --color-info-700: #e8f3fb;
+    --color-info-800: #f4f9fd;
+    --color-info-900: #ffffff;
+    --color-info-950: #ffffff;
+    /* Warning */
+    --color-warning-50: #dd8855;
+    --color-warning-100: #e59a6f;
+    --color-warning-200: #edac89;
+    --color-warning-300: #f5bea3;
+    --color-warning-400: #fdd0bd;
+    --color-warning-500: #fee5d7;
+    --color-warning-600: #fbe7d7;
+    --color-warning-700: #fdf3eb;
+    --color-warning-800: #fef9f5;
+    --color-warning-900: #ffffff;
+    --color-warning-950: #ffffff;
+    /* Error */
+    --color-error-50: #dd5555;
+    --color-error-100: #e56f6f;
+    --color-error-200: #ed8989;
+    --color-error-300: #f5a3a3;
+    --color-error-400: #fdbd bd;
+    --color-error-500: #fee5e5;
+    --color-error-600: #fbd9db;
+    --color-error-700: #fdeced;
+    --color-error-800: #fef6f6;
+    --color-error-900: #ffffff;
+    --color-error-950: #ffffff;
+    /* Neutral: bright text on dark backgrounds */
+    --color-neutral-50: #ffffff;
+    --color-neutral-100: #f6fbf4;
+    --color-neutral-200: #ecf7e9;
+    --color-neutral-300: #e0e8dd;
+    --color-neutral-400: #d1dfd1;
+    --color-neutral-500: #c6d7c6;
+    --color-neutral-600: #a3b8a3;
+    --color-neutral-700: #809980;
+    --color-neutral-800: #5d805d;
+    --color-neutral-900: #3a673a;
+    --color-neutral-950: #1a341a;
+  }
+}

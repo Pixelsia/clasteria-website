@@ -14,4 +14,19 @@ export default withNuxt([
       'vue/multi-word-component-names': 'off',
     },
   },
+  {
+    files: ['**/*.vue'],
+    rules: {
+      'max-len': 'off',
+      'vue/max-len': ['error', {
+        code: 120,
+        ignoreTemplateLiterals: true,
+        ignoreStrings: true,
+        ignoreHTMLAttributeValues: true,
+      }],
+      'vue/block-order': ['error', {
+        order: ['script', 'template', 'style'],
+      }],
+    },
+  },
 ]);

@@ -6,9 +6,15 @@ export default defineAppConfig({
     description: '新しい創造を、ここから',
     twitter: 'Pixelsia',
   },
-  theme: {
-    primaryColor: '#66aa55',
-    secondaryColor: '#5588bb',
-    accentColor: '#995533',
+  ui: {
+    colors: {
+      primary: 'primary',
+      secondary: 'secondary',
+      success: 'success',
+      info: 'info',
+      warning: 'warning',
+      error: 'error',
+      neutral: 'neutral',
+    },
   },
 });

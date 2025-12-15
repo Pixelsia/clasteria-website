@@ -16,7 +16,7 @@
       "ja-space-around-code": { "before": true, "after": true },
       "ja-space-around-link": { "before": true, "after": true }
     },
-    "incremental-headers": true,
+    "incremental-headers": false,
 
     // grammar
     "@textlint-ja/textlint-rule-no-insert-dropping-sa": true,
@@ -43,5 +43,13 @@
     "allowlist": {
       "allow": ["々"]
     }
-  }
+  },
+  "overrides": [
+    {
+      "files": ["*.md", "**/*.md"],
+      "rules": {
+        "incremental-headers": true
+      }
+    }
+  ]
 }

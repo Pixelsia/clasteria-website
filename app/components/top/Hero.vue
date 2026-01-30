@@ -1,27 +1,28 @@
 <script setup lang="ts">
-interface Props {
-  images: string[];
-  description: string;
-  primaryButtonText: string;
-  primaryButtonHref?: string;
-  secondaryButtonText: string;
-  secondaryButtonHref?: string;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  primaryButtonHref: '#',
-  secondaryButtonHref: '#',
-});
+const images = [
+  'https://picsum.photos/256/256?random=1',
+  'https://picsum.photos/256/256?random=2',
+  'https://picsum.photos/256/256?random=3',
+  'https://picsum.photos/256/256?random=4',
+  'https://picsum.photos/256/256?random=5',
+  'https://picsum.photos/256/256?random=6',
+  'https://picsum.photos/256/256?random=7',
+  'https://picsum.photos/256/256?random=8',
+  'https://picsum.photos/256/256?random=9',
+  'https://picsum.photos/256/256?random=10',
+  'https://picsum.photos/256/256?random=11',
+  'https://picsum.photos/256/256?random=12',
+];
 
 const NUM_ROWS = 4;
 const MIN_IMAGES_PER_ROW = 20;
 const EAGER_LOAD_COUNT = 6;
 
 const imageRows = computed(() => {
-  const imagesPerRow = Math.ceil(props.images.length / NUM_ROWS);
+  const imagesPerRow = Math.ceil(images.length / NUM_ROWS);
   const rows: string[][] = Array.from({ length: NUM_ROWS }, () => []);
 
-  props.images.forEach((image, index) => {
+  images.forEach((image, index) => {
     const rowIndex = Math.floor(index / imagesPerRow);
     if (rowIndex < NUM_ROWS) {
       rows[rowIndex]?.push(image);
@@ -92,26 +93,24 @@ const shouldEagerLoad = (
       <UContainer class="w-full">
         <div class="text-left">
           <h1 class="text-6xl font-bold text-white leading-tight">
-            <slot name="title" />
+            新しい<span class="text-primary-300">創造</span>を、<br>
+            ここから
           </h1>
-          <p class="text-xl text-primary-100 leading-loose mt-6 max-w-2xl text-balance">
-            {{ description }}
-          </p>
           <div class="flex gap-4 mt-8">
             <UButton
               color="secondary"
               size="lg"
               class="rounded-full px-8 py-3"
-              :to="primaryButtonHref"
+              to="#"
             >
-              {{ primaryButtonText }}
+              冒険を始める
             </UButton>
             <UButton
               variant="outline"
               class="text-white border-white/30 hover:bg-white/10 rounded-full px-8 py-3"
-              :to="secondaryButtonHref"
+              to="#"
             >
-              {{ secondaryButtonText }}
+              Pixelsia とは
             </UButton>
           </div>
         </div>

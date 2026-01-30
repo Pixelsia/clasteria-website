@@ -63,7 +63,7 @@ const footerColumns = [
         </div>
       </div>
       <div class="text-center text-primary-400 text-xs">
-        © 2025 Pixelsia Network. All rights reserved.
+        © 2026 Pixelsia Network.
       </div>
     </UContainer>
   </footer>

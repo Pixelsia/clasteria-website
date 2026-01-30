@@ -26,6 +26,9 @@
   "eslint.validate": ["javascript", "typescript", "vue"],
   "eslint.format.enable": true,
 
+  // TypeScript
+  "typescript.preferences.preferTypeOnlyAutoImports": true,
+
   // Nuxt UI
   "tailwindCSS.classAttributes": ["class", "ui"],
   "tailwindCSS.experimental.classRegex": [

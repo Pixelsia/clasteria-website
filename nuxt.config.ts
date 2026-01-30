@@ -9,12 +9,17 @@ export default defineNuxtConfig({
   },
 
   modules: [
-    '@nuxt/content',
-    '@nuxt/eslint',
-    '@nuxt/image',
-    '@nuxt/scripts',
-    '@nuxt/test-utils',
+    // core features
     '@nuxt/ui',
+    // content management
+    '@nuxt/image',
+    '@nuxt/content',
+    // utilities
+    '@vueuse/nuxt',
+    '@nuxt/scripts',
+    // development tools
+    '@nuxt/eslint',
+    '@nuxt/test-utils',
   ],
 
   css: ['~/assets/main.css'],
@@ -26,7 +31,7 @@ export default defineNuxtConfig({
 
   ui: {
     theme: {
-      colors: ['primary', 'secondary', 'success', 'info', 'warning', 'error', 'neutral'],
+      colors: ['primary', 'secondary', 'success', 'info', 'warning', 'error'],
     },
   },
 });

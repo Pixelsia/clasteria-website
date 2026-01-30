@@ -1,9 +1,12 @@
 minimumReleaseAge: 2880
 
 onlyBuiltDependencies:
+  - '@parcel/watcher'
   - better-sqlite3
   - esbuild
   - fast-xml-parser
+  - sharp
+  - unrs-resolver
   - vue-demi
 
 overrides:

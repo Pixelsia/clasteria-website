@@ -9,23 +9,13 @@ const navItems = [
   { label: 'ニュース', active: false },
 ];
 
-const isHeaderSolid = ref(false);
 const route = useRoute();
 
-onMounted(() => {
+const { y: scrollY } = useScroll(window);
+const isHeaderSolid = computed(() => {
   const threshold = (route.meta.headerScrollThreshold as number) || 0;
-  const scrollY = window.innerHeight * threshold;
-
-  const updateHeaderState = () => {
-    isHeaderSolid.value = window.scrollY > scrollY;
-  };
-
-  window.addEventListener('scroll', updateHeaderState);
-  updateHeaderState();
-
-  onUnmounted(() => {
-    window.removeEventListener('scroll', updateHeaderState);
-  });
+  if (import.meta.server) return threshold <= 0;
+  return scrollY.value >= window.innerHeight * threshold;
 });
 </script>
 
@@ -53,10 +43,12 @@ onMounted(() => {
       </nav>
 
       <div class="flex items-center gap-4">
-        <a
-          href="#"
+        <NuxtLink
+          to="#"
           class="text-white hover:text-primary-200"
-        >ログイン</a>
+        >
+          ログイン
+        </NuxtLink>
         <UButton
           color="secondary"
           size="lg"

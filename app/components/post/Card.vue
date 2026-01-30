@@ -1,13 +1,11 @@
 <script setup lang="ts">
-interface Props {
+withDefaults(defineProps<{
   title: string;
   date: string;
   tag?: string;
   imageUrl?: string;
   href?: string;
-}
-
-withDefaults(defineProps<Props>(), {
+}>(), {
   tag: 'News',
   imageUrl: '',
   href: '#',
@@ -15,8 +13,8 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <template>
-  <a
-    :href="href"
+  <NuxtLink
+    :to="href"
     class="block group"
   >
     <div class="h-48 bg-neutral-200 dark:bg-neutral-600 rounded-xl mb-4 overflow-hidden">
@@ -36,5 +34,5 @@ withDefaults(defineProps<Props>(), {
     <h3 class="font-bold text-primary-900 dark:text-primary-200 group-hover:underline">
       {{ title }}
     </h3>
-  </a>
+  </NuxtLink>
 </template>

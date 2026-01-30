@@ -8,13 +8,13 @@ export default defineAppConfig({
   },
   ui: {
     colors: {
-      primary: 'primary',
-      secondary: 'secondary',
-      success: 'success',
-      info: 'info',
-      warning: 'warning',
-      error: 'error',
-      neutral: 'neutral',
+      primary: 'green',
+      secondary: 'orange',
+      success: 'green',
+      info: 'blue',
+      warning: 'yellow',
+      error: 'red',
+      neutral: 'slate',
     },
   },
 });

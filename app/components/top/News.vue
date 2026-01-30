@@ -39,7 +39,7 @@ const newsItems = [
       </div>
       <div class="bg-white dark:bg-neutral-700 border border-primary-100 dark:border-primary-700 rounded-3xl shadow-sm p-12">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <NewsCard
+          <PostCard
             v-for="news in newsItems"
             :key="news.title"
             :title="news.title"

@@ -1,9 +1,9 @@
 <template>
   <div class="bg-primary-50 dark:bg-neutral-800">
-    <PixelsiaHeader />
+    <LayoutHeader />
     <UMain>
       <slot />
     </UMain>
-    <PixelsiaNetworkFooter />
+    <LayoutFooter />
   </div>
 </template>

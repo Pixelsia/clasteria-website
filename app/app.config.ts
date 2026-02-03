@@ -1,8 +1,8 @@
 export default defineAppConfig({
   seo: {
-    name: 'Pixelsia',
-    url: 'https://pixelsia.net',
-    defaultTitle: 'Pixelsia',
+    name: 'Clasteria',
+    url: 'https://clasteria.pixelsia.net',
+    defaultTitle: 'Clasteria',
     description: '新しい創造を、ここから',
     twitter: 'Pixelsia',
   },

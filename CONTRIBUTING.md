@@ -1,4 +1,4 @@
-# Pixelsia Website 開発者向けガイド
+# Clasteria Website 開発者向けガイド
 
 このプロジェクトの概要については、[README.md](./README.md) を参照してください。
 
@@ -40,13 +40,13 @@ Node.js v20 以降と pnpm がインストールされている必要があり�
   - できるだけ単一責任の原則に従い、1 つのモジュールやコンポーネントが多くの責任を持たないようにしてください。
   - クリーンアーキテクチャに基づき、より抽象的なレイヤーがより具体的なレイヤーに依存しないでください。([**おすすめ資料**](https://www.docswell.com/s/nuits_jp/5DNXE9-easiest-clean-architecture))
     - `utils/` ディレクトリには純粋なロジックのみを配置し、Vue.js に依存するロジックは `composables/` に配置してください。
-  - コンポーネントの再利用性を高めるため、コンポーネント自体にマージン (外側の余白) を持たせないでください。レイアウトの調整は親コンポーネントで行ってください。ただし、`pages/` ディレクトリ内のページコンポーネントは例外です。
 - Nuxt 4 と Vue.js 3 の最新のベストプラクティスに従ってください。
   - Composition API を優先的に使用し、Options API は避けてください。
   - インストールされている Nuxt Modules を優先的に使用し、独自実装は避けてください。
     - 例えば、CSS はできるだけ書かずに、Nuxt UI や Tailwind CSS を優先的に使用してください。
+      - LLM が Nuxt UI v4 のドキュメントを読む際は <https://ui.nuxt.com/llms.txt> を参照してください。
     - 例えば、画像は常に Nuxt Image の `<NuxtPicture>` コンポーネントを使用してください。(SVG は `<NuxtImg>` コンポーネントを使用してください)
-    - Tailwind CSS では Arbitrary Values（`h-[580px]` のような角括弧内のカスタム値）の使用を避けてください。スケーリングシステムで定義されたクラス（`h-screen`、`h-64`、`w-full` など）を優先的に使用してください。どうしてもカスタムスペーシングが必要な場合は、`app/assets/main.css` で Tailwind の設定に新しい値を追加してください。
+    - Tailwind CSS では Arbitrary Values (`h-[580px]` のような角括弧内のカスタム値) の使用を避けてください。スケーリングシステムで定義されたクラス (`h-screen`、`h-64`、`w-full` など) を優先的に使用してください。どうしてもカスタムスペーシングが必要な場合は、`app/assets/main.css` で Tailwind の設定に新しい値を追加してください。
   - 簡単なことをするためだけにライブラリを追加しないでください。
     - まずは標準機能や既存の依存関係で実現できないか検討してください。
     - どうしても必要な場合は、軽量でメンテナンスされているライブラリを選んでください。
@@ -62,13 +62,24 @@ components/
 └── <page>/       # ページ固有の演出 (top/, codingcraft/ など)
 ```
 
-汎用的な UI 部品 (ボタン、モーダルなど) は Nuxt UI を使用してください。どうしても独自実装が必要な場合は `ui/` ディレクトリに配置します。
+- 汎用的な UI 部品 (ボタン、モーダルなど) は Nuxt UI を使用してください。どうしても独自実装が必要な場合は `ui/` ディレクトリに配置します。
+- コンポーネントの再利用性を高めるため、コンポーネント自体にマージン (外側の余白) を持たせないでください。レイアウトの調整は親コンポーネントで行ってください。ただし、`pages/` ディレクトリ内のページコンポーネントは例外です。
+
+### Design
+
+- デザインにおいて、影はできるだけ避け、フラットデザインを採用してください。
+- ダークモード対応は現時点では対象外です。ライトテーマのみを前提にデザインしてください。
+- 色はできるだけ `app/assets/main.css` で定義されたカラーパレットを使用してください。
+  - 意味で色を使用する場合は `primary`、`secondary`、`success`、`warning`、`danger`、`neutral` を使用してください。
+  - 逆に、その色である必要がある場合は `red`、`blue` のように具体的な色名を使用してください。
+- 動的に中身が変化するコンポーネントでは、レイアウトシフトに注意してください。読み込み処理が発生する場合などは、スケルトンを表示することを検討してください。
+- レスポンシブデザインを採用し、PC でもモバイルでも快適に閲覧できるようにしてください。Tailwind CSS のレスポンシブユーティリティクラスを活用してください。
 
 ### Test
 
 - ユニットテストはコロケーション (テスト対象と同じディレクトリに配置) してください。
 - E2E テストは `e2e-tests/` ディレクトリに配置してください。
-- `main` Branch の最新のテストカバレッジは <https://pixelsia.github.io/pixelsia-website/coverage/> で確認できます。
+- `main` Branch の最新のテストカバレッジは <https://pixelsia.github.io/clasteria-website/coverage/> で確認できます。
 
 ### Lint
 
@@ -81,7 +92,7 @@ components/
 - ブラウザーの開発者ツールの Performance および Network および Lighthouse タブ
 - `pnpm analyze` コマンドで生成できるバンドル分析レポート
   - SSG を採用しているため、「Nitro server bundle stats」は無視してください。
-  - `main` Branch の最新のレポートは <https://pixelsia.github.io/pixelsia-website/analysis/> で確認できます。
+  - `main` Branch の最新のレポートは <https://pixelsia.github.io/clasteria-website/analysis/> で確認できます。
 
 > [!Note]
 > ビルドで生成された HTML ファイルを調べると、`<style id="nuxt-ui-colors"></style>` 内の CSS が最適化されていないことに気づくかもしれません。

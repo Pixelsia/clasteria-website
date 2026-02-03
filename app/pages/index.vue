@@ -11,9 +11,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="-mt-20">
+  <article class="-mt-20">
     <TopHero />
-    <TopFeatures />
+    <div><TopFeatures /></div>
     <TopNews />
-  </div>
+  </article>
 </template>

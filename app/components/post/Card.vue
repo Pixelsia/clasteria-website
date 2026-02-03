@@ -18,12 +18,15 @@ withDefaults(defineProps<{
     class="block group"
   >
     <div class="h-48 bg-neutral-200 dark:bg-neutral-600 rounded-xl mb-4 overflow-hidden">
-      <img
+      <NuxtPicture
         v-if="imageUrl"
         :src="imageUrl"
-        :alt="title"
-        class="w-full h-full object-cover"
-      >
+        class="w-full h-full"
+        :img-attrs="{
+          class: 'w-full h-full object-cover',
+          alt: title,
+        }"
+      />
     </div>
     <div class="flex items-center gap-2 mb-2">
       <span class="bg-primary-100 dark:bg-primary-700 text-primary-600 dark:text-primary-300 text-xs px-2 py-1 rounded-full">

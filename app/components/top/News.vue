@@ -16,39 +16,42 @@ const newsItems = [
 </script>
 
 <template>
-  <section class="py-20">
-    <UContainer>
-      <div class="mb-8">
-        <div class="flex justify-between items-center">
-          <div>
-            <h2 class="text-2xl text-primary-900 font-bold">
-              最新ニュース
-            </h2>
-            <p class="text-primary-600 text-sm mt-1">
-              最新のアップデートやイベント情報をお届けします
-            </p>
-          </div>
-          <UButton
-            variant="ghost"
-            color="primary"
-            to="#"
-          >
-            すべて見る
-          </UButton>
+  <UContainer
+    as="section"
+    class="bg-neutral-50 dark:bg-neutral-700 border-2 border-primary-200 dark:border-primary-700 rounded-3xl"
+  >
+    <div class="mb-8">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-2xl text-primary-900 font-bold">
+            最新ニュース
+          </h2>
+          <p class="text-primary-600 text-sm mt-1">
+            最新のアップデートやイベント情報をお届けします
+          </p>
         </div>
+        <UButton
+          variant="ghost"
+          color="primary"
+          trailing-icon="i-heroicons-arrow-right"
+          class="gap-6"
+          to="#"
+        >
+          すべて見る
+        </UButton>
       </div>
-      <div class="bg-white dark:bg-neutral-700 border border-primary-100 dark:border-primary-700 rounded-3xl shadow-sm p-12">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <PostCard
-            v-for="news in newsItems"
-            :key="news.title"
-            :title="news.title"
-            :date="news.date"
-            :tag="news.tag"
-            :href="news.href"
-          />
-        </div>
+    </div>
+    <div class="p-12">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <PostCard
+          v-for="news in newsItems"
+          :key="news.title"
+          :title="news.title"
+          :date="news.date"
+          :tag="news.tag"
+          :href="news.href"
+        />
       </div>
-    </UContainer>
-  </section>
+    </div>
+  </UContainer>
 </template>

@@ -4,7 +4,11 @@
   },
   "rules": {
     // preset
-    "preset-japanese": true,
+    "preset-japanese": {
+      "no-doubled-joshi": {
+        "allow": ["も", "や", "か"]
+      }
+    },
     "@textlint-ja/preset-ai-writing": true,
 
     // format

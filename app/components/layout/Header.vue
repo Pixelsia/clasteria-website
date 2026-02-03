@@ -25,18 +25,24 @@ const isHeaderSolid = computed(() => {
     :class="isHeaderSolid ? 'bg-primary-600 border-secondary-600' : 'bg-transparent border-transparent'"
   >
     <UContainer class="h-full flex items-center justify-between">
-      <div class="text-white text-xl font-bold">
-        Pixelsia
+      <div class="text-neutral-50 text-xl font-bold">
+        Clasteria
       </div>
 
       <nav class="flex gap-2">
         <UButton
           v-for="item in navItems"
           :key="item.label"
-          :variant="item.active ? 'solid' : 'ghost'"
-          :class="item.active ? 'bg-primary-500 text-white' : 'text-primary-100 hover:bg-white/10'"
+          :active="item.active"
+          variant="ghost"
+          active-variant="solid"
+          color="primary"
           size="lg"
           class="h-14 px-4"
+          :ui="{
+            base: 'text-primary-100 hover:bg-neutral-50/10',
+          }"
+          active-class="bg-primary-500 text-neutral-50"
         >
           {{ item.label }}
         </UButton>
@@ -45,7 +51,7 @@ const isHeaderSolid = computed(() => {
       <div class="flex items-center gap-4">
         <NuxtLink
           to="#"
-          class="text-white hover:text-primary-200"
+          class="text-neutral-50 hover:text-primary-200"
         >
           ログイン
         </NuxtLink>

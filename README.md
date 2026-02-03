@@ -1,18 +1,18 @@
-# Pixelsia Website
+# Clasteria Website
 
-**&copy; 2025 Pixelsia Network**  
+**&copy; 2025 Pixelsia**  
 License: [**MIT License**](./LICENSE)
 
-Pixelsia 公式ウェブサイトのソースコード
+Clasteria 公式ウェブサイトのソースコード
 
 <!--
-本番環境: **<https://pixelsia.net/>**
+本番環境: **<https://clasteria.pixelsia.net/>**
 -->
 
 SSG (静的サイト生成) を採用し、Cloudflare Pages で配信しています。
 
 <!--
-記事は [**Pixelsia/pixelsia-articles (private)**](https://github.com/Pixelsia/pixelsia-articles) で管理しています。GitHub Actions により、記事の更新時にも Cloudflare Pages を再デプロイしています。
+記事は [**Pixelsia/clasteria-website-content (private)**](https://github.com/Pixelsia/clasteria-website-content) で管理しています。GitHub Actions により、記事の更新時にも Cloudflare Pages を再デプロイしています。
 -->
 
 ## 使用技術
@@ -32,9 +32,8 @@ Node.js v20 以降と pnpm がインストールされている必要があり�
 
 ### 1. 環境変数の設定
 
-一部の機能を利用するためには環境変数が必要です。`.env.template` に必要な変数が記載されています。  
-環境変数をファイルから読み込みたい場合は、`.env.template` をコピーして `.env` ファイルを作成し、必要な値を設定してください。  
-また、`NODE_ENV` は必ず `production` に設定してください。
+一部の機能を利用するためには環境変数が必要です。`.env.example` に必要な変数が記載されています。  
+環境変数をファイルから読み込みたい場合は、`.env.example` をコピーして `.env` ファイルを作成し、必要な値を設定してください。  
 
 ### 2. 依存関係のインストール
 

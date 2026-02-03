@@ -1,4 +1,6 @@
 <script setup lang="ts">
+/// 背景の画像 marquee
+
 const images = [
   'https://picsum.photos/256/256?random=1',
   'https://picsum.photos/256/256?random=2',
@@ -49,16 +51,72 @@ const shouldEagerLoad = (
   if (isLtr) return imageIndex >= rowLength && imageIndex < rowLength + EAGER_LOAD_COUNT;
   else return imageIndex < EAGER_LOAD_COUNT;
 };
+
+/// スクロール処理
+
+const heroRef = useTemplateRef('hero');
+const { y } = useScroll(window, { behavior: 'smooth' });
 </script>
 
 <template>
-  <section class="relative overflow-hidden min-h-screen">
-    <div class="absolute inset-0">
+  <section
+    ref="hero"
+    class="relative isolate overflow-hidden min-h-screen flex flex-col"
+  >
+    <div class="relative flex-1 flex items-center bg-primary-600/80 z-10">
+      <UContainer>
+        <h1 class="text-6xl font-bold text-neutral-50 leading-tight">
+          新しい<span class="text-primary-300">創造</span>を、<br>
+          ここから
+        </h1>
+        <div class="flex gap-4 mt-8">
+          <UButton
+            color="secondary"
+            trailing-icon="i-heroicons-arrow-right"
+            size="lg"
+            class="rounded-full justify-between pl-6 pr-4 py-4"
+            to="#"
+          >
+            冒険を始める
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="lg"
+            class="text-neutral-50 border-neutral-50/30 bg-neutral-50/10 hover:bg-neutral-50/25 active:bg-neutral-50/40 rounded-full px-8 py-4"
+            to="#"
+          >
+            Clasteria とは
+          </UButton>
+        </div>
+      </UContainer>
+    </div>
+
+    <div class="absolute bottom-8 inset-x-0 flex justify-center z-10">
+      <UButton
+        icon="i-heroicons-chevron-down"
+        variant="ghost"
+        color="neutral"
+        aria-label="次のセクションへスクロール"
+        :ui="{
+          base: 'size-16 rounded-full flex items-center justify-center text-neutral-50/80 hover:bg-neutral-50/10 active:bg-neutral-50/20 focus:bg-neutral-50/20',
+          leadingIcon: 'size-8 animate-bounce mt-2',
+        }"
+        @click="y = heroRef!.offsetTop + heroRef!.offsetHeight"
+      />
+    </div>
+
+    <div
+      class="absolute inset-0"
+      aria-hidden="true"
+    >
       <div
         v-for="(row, rowIndex) in imageRows"
         :key="rowIndex"
-        class="absolute left-0 right-0 h-1/4 overflow-hidden"
-        :style="{ top: `${rowIndex * 25}%` }"
+        :class="[
+          'absolute inset-x-0 h-1/4 overflow-hidden',
+          ['top-0', 'top-1/4', 'top-1/2', 'top-3/4'][rowIndex]
+        ]"
       >
         <div
           :class="[
@@ -76,7 +134,7 @@ const shouldEagerLoad = (
               class="w-full h-full"
               :img-attrs="{
                 class: 'w-full h-full object-cover',
-                alt: `background-${imageIndex}`,
+                alt: '',
                 loading: shouldEagerLoad(rowIndex, imageIndex, row.length)
                   ? 'eager'
                   : 'lazy',
@@ -85,43 +143,6 @@ const shouldEagerLoad = (
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="absolute inset-0 bg-primary-600/80" />
-
-    <div class="absolute inset-0 z-10 flex items-center">
-      <UContainer class="w-full">
-        <div class="text-left">
-          <h1 class="text-6xl font-bold text-white leading-tight">
-            新しい<span class="text-primary-300">創造</span>を、<br>
-            ここから
-          </h1>
-          <div class="flex gap-4 mt-8">
-            <UButton
-              color="secondary"
-              size="lg"
-              class="rounded-full px-8 py-3"
-              to="#"
-            >
-              冒険を始める
-            </UButton>
-            <UButton
-              variant="outline"
-              class="text-white border-white/30 hover:bg-white/10 rounded-full px-8 py-3"
-              to="#"
-            >
-              Pixelsia とは
-            </UButton>
-          </div>
-        </div>
-      </UContainer>
-    </div>
-
-    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-10">
-      <UIcon
-        name="i-heroicons-chevron-down"
-        class="w-8 h-8 text-white/70 animate-bounce"
-      />
     </div>
   </section>
 </template>

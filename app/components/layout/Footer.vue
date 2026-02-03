@@ -31,12 +31,12 @@ const footerColumns = [
   <footer class="bg-primary-700 border-t-8 border-secondary-600 pt-14 pb-8">
     <UContainer>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-        <div class="text-primary-100">
-          <div class="text-white text-lg font-bold mb-4">
-            Pixelsia Network
+        <div class="text-primary-200/80">
+          <div class="text-neutral-50 text-lg font-bold mb-4">
+            Pixelsia
           </div>
           <p class="text-sm">
-            森の中でコードを育てよう。プログラミングとおにごっこを組み合わせた新しい学習体験を提供します。
+            新しい創造を、ここから
           </p>
         </div>
 
@@ -44,7 +44,7 @@ const footerColumns = [
           v-for="column in footerColumns"
           :key="column.title"
         >
-          <h3 class="text-white border-b border-primary-600 pb-2 mb-4">
+          <h3 class="text-neutral-50 border-b border-primary-600 pb-2 mb-4">
             {{ column.title }}
           </h3>
           <ul class="space-y-2 text-primary-100 text-sm">
@@ -54,7 +54,7 @@ const footerColumns = [
             >
               <NuxtLink
                 :to="link.href"
-                class="hover:text-white"
+                class="hover:text-neutral-50"
               >
                 {{ link.label }}
               </NuxtLink>
@@ -63,7 +63,7 @@ const footerColumns = [
         </div>
       </div>
       <div class="text-center text-primary-400 text-xs">
-        © 2026 Pixelsia Network.
+        © 2026 Pixelsia.
       </div>
     </UContainer>
   </footer>

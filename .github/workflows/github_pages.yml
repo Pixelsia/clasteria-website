@@ -12,6 +12,9 @@ permissions:
 jobs:
   analyze-bundle:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_ENV: production
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -34,6 +37,9 @@ jobs:
 
   coverage-report:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      NODE_ENV: development
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -57,6 +63,7 @@ jobs:
   deploy:
     needs: [analyze-bundle, coverage-report]
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

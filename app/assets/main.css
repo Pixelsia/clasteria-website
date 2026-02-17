@@ -76,3 +76,30 @@
   --color-slate-900: #101828;
   --color-slate-950: #030712;
 }
+
+/* <wbr> で文節が区切られている必要がある */
+@utility break-phrase {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* doiuse-disable css-has */
+@layer base {
+  h1:has(wbr),
+  h2:has(wbr),
+  h3:has(wbr),
+  h4:has(wbr),
+  h5:has(wbr),
+  h6:has(wbr),
+  button:has(wbr),
+  label:has(wbr),
+  th:has(wbr),
+  dt:has(wbr),
+  caption:has(wbr),
+  figcaption:has(wbr),
+  legend:has(wbr),
+  summary:has(wbr) {
+    @apply break-phrase;
+  }
+}
+/* doiuse-enable css-has */

@@ -6,23 +6,25 @@ License: [**MIT License**](./LICENSE)
 Clasteria 公式ウェブサイトのソースコード
 
 <!--
+記事管理: [**Pixelsia/clasteria-website-content (private)**](https://github.com/Pixelsia/clasteria-website-content)
 本番環境: **<https://clasteria.pixelsia.net/>**
 -->
 
 SSG (静的サイト生成) を採用し、Cloudflare Pages で配信しています。
 
-<!--
-記事は [**Pixelsia/clasteria-website-content (private)**](https://github.com/Pixelsia/clasteria-website-content) で管理しています。GitHub Actions により、記事の更新時にも Cloudflare Pages を再デプロイしています。
--->
-
 ## 使用技術
 
 - Framework: **Nuxt 4** (Vue.js 3)
 - Language: **TypeScript**
-- Styling: **Tailwind CSS**, **Nuxt UI**
 - Package Manager: **pnpm**
 - Testing: **Vitest**, **Playwright**
 - Linting: **ESLint**, **textlint**
+- Styling: **Tailwind CSS v4**, **Nuxt UI v4**
+- Content Manager: **Nuxt Content v3**
+
+## 記事の管理方法
+
+TODO: 記事の管理方法についての説明を追加する
 
 ## ビルド手順
 

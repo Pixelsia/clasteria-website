@@ -1,9 +1,17 @@
 <script setup lang="ts">
-const { data: articles } = await useAsyncData('articles', () =>
-  queryCollection('articles').select('stem', 'title', 'author', 'date', 'tags', 'hotDays').all(),
-);
+const articlesList = await useArticlesList();
 
-const getSlugFromStem = (stem: string) => (stem.match(/\/([^/]+)\/index$/) as [string, string])[1];
+const displayArticles = articlesList.value.articles.map(article => ({
+  ...article,
+  ogImageSrc: useOgImageSrc(`/articles/${article.slug}`, article.ogImage),
+}));
+
+// const sortedArticles = shallowRef<NonNullable<typeof articles.value>>([]);
+// onMounted(() => {
+//   sortedArticles.value = articles.value!
+//     .map(item => ({ ...item, hotScore: calculateHotScore(item.hotDays, item.publishedAt) }))
+//     .toSorted((a, b) => a.hotScore - b.hotScore);
+// });
 </script>
 
 <template>
@@ -11,11 +19,19 @@ const getSlugFromStem = (stem: string) => (stem.match(/\/([^/]+)\/index$/) as [s
     <h1>お知らせ</h1>
     <ul>
       <li
-        v-for="article in articles"
-        :key="article.stem"
+        v-for="article in displayArticles"
+        :key="article.slug"
       >
-        <NuxtLink :to="`/articles/${getSlugFromStem(article.stem)}`">
-          <ClientOnly>{{ new Date(article.date).toLocaleDateString() }}</ClientOnly> - {{ article.title }}
+        <NuxtLink :to="`/articles/${article.slug}`">
+          <NuxtPicture
+            :src="article.ogImageSrc"
+            :width="320"
+            :height="168"
+            fit="cover"
+            :alt="article.title"
+          />
+          {{ formatDate(article.publishedAt, { includeTime: false }) }} - {{ article.title }}
+          <div>{{ article.description }}</div>
         </NuxtLink>
       </li>
     </ul>

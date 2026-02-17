@@ -1,0 +1,18 @@
+{
+  "extends": ["stylelint-config-standard-vue"],
+  "plugins": ["stylelint-no-unsupported-browser-features"],
+  "rules": {
+    "plugin/no-unsupported-browser-features": [
+      true,
+      {
+        // Tailwind CSS が自動で対応するため、以下の機能は無視する
+        "ignorePartialSupport": true,
+        "ignore": [
+          "css-nesting",
+          "css-relative-color",
+          "css-gradient-interpolation"
+        ]
+      }
+    ]
+  }
+}

@@ -1,39 +1,31 @@
 <script setup lang="ts">
+definePageMeta({
+  key: route => route.path,
+  layout: 'docs',
+});
+
 const route = useRoute();
 const slug = route.params.slug as string;
-
-const { data: post } = await useAsyncData(
-  `articles/${slug}`,
-  () => queryCollection('articles').where('stem', 'LIKE', `%/${slug}/index`).first(),
-);
-
-if (post.value == null) {
-  throw createError({ statusCode: 404, statusMessage: 'Article not found' });
-}
-
-const ogImage = computed(() => `/assets/articles/${slug}/ogp.jpg`);
-
-useSeoMeta({
-  title: post.value.title,
-  ogTitle: post.value.title,
-  ogImage: ogImage.value,
-  description: post.value.title, // TODO: 中身から抜き出す
+const article = await useArticle(slug).then((article) => {
+  if (article.value == null) {
+    throw createError({ statusCode: 404, statusMessage: 'Article not found', fatal: true });
+  }
+  return article as Ref<Article>;
 });
+
+useSeoMeta(article.value.seo);
+defineOgImage(useResolvedOgImage(article.value.ogImage));
 </script>
 
 <template>
-  <article>
-    <UContainer as="header">
-      <h1>{{ post!.title }}</h1>
-      <div>
-        <time>{{ new Date(post!.date).toLocaleDateString() }}</time>
-        <div>
-          <span>{{ post!.author }}</span>
-        </div>
-      </div>
-    </UContainer>
-    <UContainer as="section">
-      <ContentRenderer :value="post!" />
-    </UContainer>
-  </article>
+  <UPage as="article">
+    <UPageHeader
+      :headline="formatDate(article.publishedAt)"
+      :title="article.title"
+      :description="`投稿者: ${article.author}`"
+    />
+    <UPageBody as="section">
+      <ContentRenderer :value="article.body" />
+    </UPageBody>
+  </UPage>
 </template>

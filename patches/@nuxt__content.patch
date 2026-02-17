@@ -1,0 +1,88 @@
+diff --git a/dist/module.cjs b/dist/module.cjs
+index 65694b99b6d37dcb92d6e4f5e15b32417ec449be..783fd85428a5462acacfb8e8defb860fbb053af0 100644
+--- a/dist/module.cjs
++++ b/dist/module.cjs
+@@ -1431,6 +1431,7 @@ async function createParser(collection, nuxt) {
+   const nuxtOptions = nuxt?.options;
+   const mdcOptions = nuxtOptions?.mdc || {};
+   const { pathMeta = {}, markdown = {}, transformers = [], csv = {}, yaml = {} } = nuxtOptions?.content?.build || {};
++  markdown.contentHeading ??= true;
+   const rehypeHighlightPlugin = markdown.highlight !== false ? await getHighlightPluginInstance(defu$1.defu(markdown.highlight, mdcOptions.highlight, { compress: true })) : void 0;
+   let extraTransformers = [];
+   if (nuxt?.options?.rootDir) {
+@@ -1445,6 +1446,7 @@ async function createParser(collection, nuxt) {
+   }
+   const parserOptions2 = {
+     pathMeta,
++    transformers: extraTransformers,
+     markdown: {
+       compress: true,
+       ...mdcOptions,
+@@ -1460,6 +1462,7 @@ async function createParser(collection, nuxt) {
+         ...mdcOptions?.remarkPlugins,
+         ...markdown?.remarkPlugins
+       },
++      contentHeading: collection.type === 'page' && markdown.contentHeading,
+       highlight: void 0
+     },
+     csv,
+@@ -1476,14 +1479,7 @@ async function createParser(collection, nuxt) {
+     const beforeParseCtx = { file, collection, parserOptions: parserOptions2 };
+     await nuxt?.callHook?.("content:file:beforeParse", beforeParseCtx);
+     const { file: hookedFile } = beforeParseCtx;
+-    const parsedContent = await transformContent(hookedFile, {
+-      ...beforeParseCtx.parserOptions,
+-      transformers: extraTransformers,
+-      markdown: {
+-        ...beforeParseCtx.parserOptions?.markdown,
+-        contentHeading: !file?.collectionType || file?.collectionType === "page"
+-      }
+-    });
++    const parsedContent = await transformContent(hookedFile, beforeParseCtx.parserOptions);
+     const collectionKeys = schema_js.getOrderedSchemaKeys(collection.extendedSchema);
+     const { id, __metadata, ...parsedContentFields } = parsedContent;
+     const result = { id };
+diff --git a/dist/module.mjs b/dist/module.mjs
+index 681a4ea41437f24dfc0645cb544e858ab2f1a6d0..155cb57f8b58bf798851f86d2090bdd1128a9575 100644
+--- a/dist/module.mjs
++++ b/dist/module.mjs
+@@ -1412,6 +1412,7 @@ async function createParser(collection, nuxt) {
+   const nuxtOptions = nuxt?.options;
+   const mdcOptions = nuxtOptions?.mdc || {};
+   const { pathMeta = {}, markdown = {}, transformers = [], csv = {}, yaml = {} } = nuxtOptions?.content?.build || {};
++  markdown.contentHeading ??= true;
+   const rehypeHighlightPlugin = markdown.highlight !== false ? await getHighlightPluginInstance(defu$2(markdown.highlight, mdcOptions.highlight, { compress: true })) : void 0;
+   let extraTransformers = [];
+   if (nuxt?.options?.rootDir) {
+@@ -1426,6 +1427,7 @@ async function createParser(collection, nuxt) {
+   }
+   const parserOptions2 = {
+     pathMeta,
++    transformers: extraTransformers,
+     markdown: {
+       compress: true,
+       ...mdcOptions,
+@@ -1441,6 +1443,7 @@ async function createParser(collection, nuxt) {
+         ...mdcOptions?.remarkPlugins,
+         ...markdown?.remarkPlugins
+       },
++      contentHeading: collection.type === 'page' && markdown.contentHeading,
+       highlight: void 0
+     },
+     csv,
+@@ -1457,14 +1460,7 @@ async function createParser(collection, nuxt) {
+     const beforeParseCtx = { file, collection, parserOptions: parserOptions2 };
+     await nuxt?.callHook?.("content:file:beforeParse", beforeParseCtx);
+     const { file: hookedFile } = beforeParseCtx;
+-    const parsedContent = await transformContent(hookedFile, {
+-      ...beforeParseCtx.parserOptions,
+-      transformers: extraTransformers,
+-      markdown: {
+-        ...beforeParseCtx.parserOptions?.markdown,
+-        contentHeading: !file?.collectionType || file?.collectionType === "page"
+-      }
+-    });
++    const parsedContent = await transformContent(hookedFile, beforeParseCtx.parserOptions);
+     const collectionKeys = getOrderedSchemaKeys(collection.extendedSchema);
+     const { id, __metadata, ...parsedContentFields } = parsedContent;
+     const result = { id };

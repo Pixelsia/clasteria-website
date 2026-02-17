@@ -1,6 +1,6 @@
 ---
 title: "「CodingCraft」オープンベータテスト開始のお知らせ"
-date: 2024-08-10T10:00:00+09:00
+publishedAt: 2024-08-10T10:00:00+09:00
 tags: ["CodingCraft", "ベータテスト"]
 hotDays: 10
 ---

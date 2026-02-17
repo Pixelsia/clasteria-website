@@ -5,7 +5,16 @@
     "*.md": "markdown"
   },
   "editor.quickSuggestions": {
-    "strings": "on" // for Nuxt UI
+    "strings": "on" // for Tailwind CSS
+  },
+  "explorer.fileNesting.patterns":{
+    "*.mjs": "${capture}.cjs, ${capture}.d.*",
+    "*.vue": "${capture}.*",
+    "package.json": "pnpm-*.yaml, .npmrc, .git*",
+    "eslint.config.*": ".stylelintrc*, .textlintrc*, .*lintcache",
+    "nuxt.config.*": ".nuxtrc, content.config.*, tsconfig.json",
+    ".env": ".env.*",
+    "README.md": "*.md, LICENSE*"
   },
 
   // Format

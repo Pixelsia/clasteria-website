@@ -43,3 +43,6 @@ coverage
 # Linter caches
 .eslintcache
 .textlintcache
+
+# Content symlinks
+public/_content

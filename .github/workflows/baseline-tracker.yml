@@ -1,0 +1,130 @@
+name: Baseline Tracker
+
+on:
+  issues:
+    types: [opened, edited]
+  schedule:
+    - cron: "0 20 * * 0" # JST 05:00 Mon (UTC 20:00 Sun)
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  prepare-targets:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.set-output.outputs.matrix }}
+      count: ${{ steps.set-output.outputs.count }}
+    steps:
+      - name: Fetch raw issue data
+        id: fetch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_JSON: ${{ toJson(github.event.issue) }}
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            echo "$ISSUE_JSON" | jq -c '[.]' > raw_issues.json
+          else
+            gh issue list --label "waiting for baseline" --state closed --limit 1000 --json number,state,body > raw_issues.json
+          fi
+
+      - name: Generate matrix with unified jq
+        id: generate
+        run: |
+          jq -c <<'EOF' raw_issues.json > matrix.json
+          [ .[] | select(.body != null) | 
+            (
+              (
+                .body | split("\n") | .[] | 
+                select(test("^\\s*Baseline:"; "i")) | 
+                capture("^\\s*Baseline:\\s*`?(?<id>[a-zA-Z0-9-]+)`?"; "i")
+              ) // null
+            ) as $match |
+            if $match then 
+              {number: .number, state: (.state|ascii_downcase), id: $match.id} 
+            else 
+              empty 
+            end
+          ]
+          EOF
+
+      - name: Handle label removal for missing ID
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          if [ "$(jq 'length' matrix.json)" -eq 0 ]; then
+            gh issue edit "$ISSUE_NUMBER" --remove-label "waiting for baseline" || exit 1
+          fi
+
+      - name: Set output matrix and count
+        id: set-output
+        run: |
+          {
+            echo "count=$(jq 'length' matrix.json)"
+            echo "matrix<<EOF"
+            cat matrix.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  update-issues:
+    needs: prepare-targets
+    if: needs.prepare-targets.outputs.count != '0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        target: ${{ fromJson(needs.prepare-targets.outputs.matrix) }}
+    steps:
+      - name: Fetch Baseline API status
+        id: fetch-api
+        run: |
+          HTTP_STATUS=$(curl -s --max-time 10 --retry 3 --retry-all-errors -o response.json -w "%{http_code}" "https://api.webstatus.dev/v1/features/${{ matrix.target.id }}")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "status=$(jq -r '.baseline.status // "limited"' response.json)" >> "$GITHUB_OUTPUT"
+          elif [ "$HTTP_STATUS" = "404" ]; then
+            echo "status=not_found" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=server_error" >> "$GITHUB_OUTPUT"
+            echo "::warning::Baseline API server error ($HTTP_STATUS) for ID ${{ matrix.target.id }}"
+          fi
+
+      - name: Handle invalid Baseline ID
+        if: steps.fetch-api.outputs.status == 'not_found'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ matrix.target.number }}
+        run: |
+          echo "::warning::Invalid Baseline ID for issue #${{ matrix.target.number }}: ${{ matrix.target.id }}"
+          gh issue edit "$ISSUE_NUMBER" --remove-label "waiting for baseline" || exit 1
+
+      - name: Close issue for pending features
+        if: steps.fetch-api.outputs.status == 'limited' && matrix.target.state == 'open'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ matrix.target.number }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" --add-label "waiting for baseline" || exit 1
+          gh issue close "$ISSUE_NUMBER" || exit 1
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "対象機能 (\`${{ matrix.target.id }}\`) はまだ Widely に達していないため、待機状態に入ります。詳細は [webstatus.dev](https://webstatus.dev/features/${{ matrix.target.id }}) をご覧ください。"
+
+      - name: Reopen and resolve tracked issue
+        if: steps.fetch-api.outputs.status == 'widely'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ matrix.target.number }}
+          ISSUE_STATE: ${{ matrix.target.state }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" --remove-label "waiting for baseline" || exit 1
+          if [ "$ISSUE_STATE" = "closed" ]; then
+            gh issue reopen "$ISSUE_NUMBER" || exit 1
+            gh issue comment "$ISSUE_NUMBER" \
+              --body "🎉 対象機能 (\`${{ matrix.target.id }}\`) が Widely に到達しました。おめでとうございます。詳細は [webstatus.dev](https://webstatus.dev/features/${{ matrix.target.id }}) で確認できます。"
+          fi

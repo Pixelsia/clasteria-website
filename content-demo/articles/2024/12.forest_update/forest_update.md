@@ -1,6 +1,6 @@
 ---
 title: "春の大型アップデート: 新しいマップ「巨木の森」が追加されました"
-date: 2024-12-01T12:00:00+09:00
+publishedAt: 2024-12-01T12:00:00+09:00
 tags: ["アップデート", "マップ", "巨木の森"]
 hotDays: 30
 ---
@@ -17,7 +17,7 @@ hotDays: 30
 
 新マップ「巨木の森」は、探索を重視した中〜上級者向けのエリアです。地形の高低差や、空中をつなぐ根の橋、夜になると発光するコケなど、視覚的な豊かさも兼ね備えています。
 
-![巨木の森のイメージ](a-large-tree-with-lots-of-green-leaves.jpg)
+![巨木の森のイメージ](a-large-tree-with-lots-of-green-leaves.jpg){style="height: 480px; width: auto;"}
 
 ## 主要な追加要素
 

@@ -1,7 +1,7 @@
 ---
 title: "プログラミングコンテスト開催のお知らせ"
 author: "TwoSquirrels"
-date: 2024-12-02T12:00:00+09:00
+publishedAt: 2024-12-02T12:00:00+09:00
 tags: ["イベント", "CodingCraft", "プログラミングコンテスト"]
 hotDays: 15
 ---

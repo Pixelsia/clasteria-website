@@ -1,7 +1,7 @@
 ---
 title: "Pixelsia の全権限を猫に譲渡する計画について"
 author: "kanade1825"
-date: 2023-11-22T12:00:00+09:00
+publishedAt: 2023-11-22T12:00:00+09:00
 tags: ["運営", "コラム", "冗談"]
 hotDays: 1
 ---

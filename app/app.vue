@@ -5,6 +5,14 @@ const { seo, noscriptHtml } = useAppConfig();
 useHead({
   title: seo.defaultTitle,
   titleTemplate: (title?: string) => title ? `${title} - ${siteConfig.name}` : seo.defaultTitle,
+  link: [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    {
+      rel: 'stylesheet',
+      href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap',
+    },
+  ],
   noscript: [{ innerHTML: noscriptHtml, tagPosition: 'bodyClose' }],
 });
 

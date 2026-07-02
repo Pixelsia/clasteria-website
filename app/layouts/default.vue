@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-primary-50 dark:bg-neutral-800">
+  <div class="min-h-screen bg-white text-neutral-950">
     <LayoutHeader />
     <UMain>
       <slot />

@@ -77,6 +77,68 @@
   --color-slate-950: #030712;
 }
 
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: #ffffff;
+    color: var(--color-slate-950);
+    font-family: "Noto Sans JP", sans-serif;
+  }
+}
+
+@layer components {
+  .site-hero-bg {
+    background:
+      radial-gradient(circle at 84% 18%, rgb(0 166 62 / 38%), transparent 28rem),
+      linear-gradient(135deg, var(--color-slate-950), var(--color-green-950) 54%, var(--color-slate-900));
+  }
+
+  .site-media-frame {
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 0.5rem;
+    background: rgb(255 255 255 / 10%);
+    padding: 0.5rem;
+  }
+
+  .site-reveal {
+    opacity: 1;
+    transform: translateY(1rem);
+    transition:
+      opacity 680ms ease,
+      transform 680ms ease;
+  }
+
+  .site-reveal-left {
+    transform: translateX(-1rem);
+  }
+
+  .site-reveal-right {
+    transform: translateX(1rem);
+  }
+
+  .site-reveal.is-visible {
+    opacity: 1;
+    transform: translate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .site-reveal,
+  .site-reveal-left,
+  .site-reveal-right {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* <wbr> で文節が区切られている必要がある */
 @utility break-phrase {
   word-break: keep-all;

@@ -41,8 +41,17 @@ const columns: FooterColumn[] = [
         >
           <template #left>
             <div>
-              <div class="text-lg font-black text-white">
-                Clasteria
+              <div class="inline-flex items-center gap-3">
+                <NuxtImg
+                  src="/images/pixelsia_header_logo.png"
+                  alt="Pixelsia"
+                  class="h-6 w-auto object-contain md:h-7"
+                />
+                <span
+                  class="h-6 w-px bg-neutral-700"
+                  aria-hidden="true"
+                />
+                <span class="text-sm font-bold tracking-wide text-neutral-300 md:text-base">Clasteria</span>
               </div>
               <p class="mt-4 max-w-xs text-sm leading-7 text-neutral-300">
                 Minecraft に Pixelsia の世界を作り、遊びと学びを同じ場所で扱う公式サイトです。
@@ -55,11 +64,18 @@ const columns: FooterColumn[] = [
 
     <template #bottom>
       <UContainer class="flex flex-col gap-6 border-t border-neutral-800 pt-8 md:flex-row md:items-end md:justify-between">
-        <NuxtImg
-          src="/pixelsia-logo-text.svg"
-          alt="Pixelsia"
-          class="h-auto w-48 opacity-80"
-        />
+        <div class="inline-flex items-center gap-3">
+          <NuxtImg
+            src="/images/pixelsia_header_logo.png"
+            alt="Pixelsia"
+            class="h-6 w-auto object-contain opacity-80 md:h-7"
+          />
+          <span
+            class="h-6 w-px bg-neutral-700"
+            aria-hidden="true"
+          />
+          <span class="text-sm font-bold tracking-wide text-neutral-400 md:text-base">Clasteria</span>
+        </div>
         <p class="text-sm text-neutral-400">
           &copy; 2026 Pixelsia
         </p>

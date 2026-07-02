@@ -17,15 +17,19 @@ watch(() => route.fullPath, () => {
     <UContainer class="flex h-20 items-center justify-between gap-4">
       <NuxtLink
         to="/"
-        class="flex items-center gap-3"
+        class="inline-flex shrink-0 items-center gap-3 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-4"
         aria-label="Clasteria Home"
       >
         <NuxtImg
-          src="/pixelsia-logo-text.svg"
-          alt=""
-          class="h-6 w-auto"
+          src="/images/pixelsia_header_logo.png"
+          alt="Pixelsia"
+          class="h-6 w-auto object-contain md:h-7"
         />
-        <span class="text-lg font-black tracking-wide text-neutral-950">Clasteria</span>
+        <span
+          class="h-6 w-px bg-neutral-200"
+          aria-hidden="true"
+        />
+        <span class="text-sm font-bold tracking-wide text-neutral-500 md:text-base">Clasteria</span>
       </NuxtLink>
 
       <nav class="hidden items-center gap-1 xl:flex">

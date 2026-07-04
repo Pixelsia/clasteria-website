@@ -14,16 +14,6 @@ watch(() => route.fullPath, () => {
 
 <template>
   <header class="sticky top-0 z-50 border-b border-neutral-200 bg-white/95 backdrop-blur">
-    <div class="hidden border-b border-neutral-100 bg-white md:block">
-      <UContainer class="flex h-14 items-center gap-3">
-        <NuxtLink
-          to="/codingcraft"
-          class="inline-flex h-10 items-center rounded-lg border border-neutral-300 px-4 text-xs font-black leading-tight text-neutral-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-        >
-          PC<br>プログラミング
-        </NuxtLink>
-      </UContainer>
-    </div>
     <UContainer class="flex h-20 items-center justify-between gap-4">
       <NuxtLink
         to="/"

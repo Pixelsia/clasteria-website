@@ -16,7 +16,7 @@
         v-for="feature in featureCards"
         :key="feature.title"
         :to="feature.to"
-        class="site-reveal group grid min-h-80 bg-white transition-colors hover:bg-primary-50 md:grid-cols-2"
+        class="site-glass-panel site-reveal group grid min-h-80 transition-colors hover:bg-primary-50 md:grid-cols-2"
       >
         <NuxtPicture
           :src="feature.image"

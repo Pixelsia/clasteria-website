@@ -44,6 +44,7 @@ const { y } = useScroll(window, { behavior: 'smooth' });
             color="neutral"
             variant="outline"
             size="xl"
+            class="site-glass-action"
           >
             ミニゲームを見る
           </UButton>

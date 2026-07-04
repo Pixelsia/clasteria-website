@@ -13,7 +13,7 @@ watch(() => route.fullPath, () => {
 </script>
 
 <template>
-  <header class="sticky top-0 z-50 border-b border-neutral-200 bg-white/95 backdrop-blur">
+  <header class="site-glass-header sticky top-0 z-50">
     <UContainer class="flex h-20 items-center justify-between gap-4">
       <NuxtLink
         to="/"
@@ -76,7 +76,7 @@ watch(() => route.fullPath, () => {
 
     <div
       v-if="isMenuOpen"
-      class="border-t border-neutral-200 bg-white xl:hidden"
+      class="site-glass-menu xl:hidden"
     >
       <UContainer class="grid gap-2 py-4">
         <NuxtLink

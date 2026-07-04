@@ -22,12 +22,6 @@ watch(() => route.fullPath, () => {
         >
           PC<br>プログラミング
         </NuxtLink>
-        <NuxtLink
-          to="/leaderboard"
-          class="inline-flex h-10 items-center rounded-lg border border-neutral-300 px-4 text-xs font-black leading-tight text-neutral-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-        >
-          LB<br>リーダーボード
-        </NuxtLink>
       </UContainer>
     </div>
     <UContainer class="flex h-20 items-center justify-between gap-4">

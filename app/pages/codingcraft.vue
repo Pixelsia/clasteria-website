@@ -47,7 +47,7 @@ useSeoMeta({
         description="Notion 由来の仕様では、MC ログイン、Web ログイン、CodingCraft Lobby のモード選択へ進む流れが整理されています。"
       />
 
-      <div class="mt-12 grid gap-6 md:grid-cols-3">
+      <div class="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <SiteInfoCard
           v-for="item in codingCraftFlow"
           :key="item.title"

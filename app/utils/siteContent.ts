@@ -81,6 +81,14 @@ export const featureCards = [
     icon: 'i-heroicons-cube-transparent',
     eyebrow: 'HIDE AND SEEK',
   },
+  {
+    title: 'リーダーボード',
+    description: '各ゲームのランキング Top10 を紹介する枠です。データソースと更新方法は未決のため、初期公開では TODO として表示します。',
+    to: '/leaderboard',
+    image: '/images/clasteria/home-main-visual.png',
+    icon: 'i-heroicons-trophy',
+    eyebrow: 'LEADERBOARD',
+  },
 ] satisfies FeatureCard[];
 
 export const codingCraftFlow = [
@@ -95,9 +103,19 @@ export const codingCraftFlow = [
     icon: 'i-heroicons-window',
   },
   {
-    title: '学習と制作',
-    body: '学習モード、サンドボックス、サバイバル、対戦モードがモード選択の候補として整理されています。',
+    title: '学習モード',
+    body: 'StudyContent 仕様にある学習コンテンツの入口として、手順を追って制作へ進む枠です。',
     icon: 'i-heroicons-command-line',
+  },
+  {
+    title: 'サンドボックス',
+    body: '自由制作に近いモード候補です。Web UI の詳細操作は未決のため紹介枠に留めます。',
+    icon: 'i-heroicons-cube',
+  },
+  {
+    title: '対戦モード',
+    body: 'モード選択候補として整理されている枠です。ランキングや評価方法は未決です。',
+    icon: 'i-heroicons-sparkles',
   },
 ] satisfies InfoCard[];
 

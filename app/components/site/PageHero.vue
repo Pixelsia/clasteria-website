@@ -9,9 +9,18 @@ defineProps<{
 </script>
 
 <template>
-  <section class="site-hero-bg overflow-hidden text-white">
-    <UContainer class="grid gap-10 py-16 md:grid-cols-2 md:items-center lg:py-24">
-      <div class="site-reveal site-reveal-left flex flex-col gap-6">
+  <section class="relative isolate overflow-hidden bg-neutral-950 text-white">
+    <span class="sr-only">{{ imageAlt }}</span>
+    <NuxtPicture
+      :src="image"
+      alt=""
+      class="absolute inset-0 -z-10 block size-full"
+      :img-attrs="{ class: 'size-full object-cover opacity-35' }"
+    />
+    <div class="absolute inset-0 -z-10 bg-gradient-to-b from-neutral-950/80 via-neutral-950/60 to-neutral-950/85" />
+
+    <UContainer class="flex min-h-screen items-center justify-center py-24">
+      <div class="site-reveal mx-auto flex max-w-4xl flex-col items-center gap-6 text-center">
         <p class="text-xs font-black uppercase tracking-widest text-primary-300">
           {{ eyebrow }}
         </p>
@@ -23,19 +32,9 @@ defineProps<{
         </p>
         <div
           v-if="$slots.actions"
-          class="flex flex-wrap gap-3"
+          class="flex flex-wrap justify-center gap-3"
         >
           <slot name="actions" />
-        </div>
-      </div>
-      <div class="site-reveal site-reveal-right">
-        <div class="site-media-frame">
-          <NuxtPicture
-            :src="image"
-            :alt="imageAlt"
-            class="block aspect-video w-full overflow-hidden rounded-lg"
-            :img-attrs="{ class: 'size-full object-cover' }"
-          />
         </div>
       </div>
     </UContainer>

@@ -1,7 +1,7 @@
 <template>
   <UContainer
     as="section"
-    class="py-20"
+    class="py-16 md:py-20"
   >
     <SiteSectionHeader
       class="site-reveal"
@@ -11,20 +11,20 @@
       align="center"
     />
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 auto-rows-fr">
+    <div class="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-neutral-200 bg-neutral-200 md:grid-cols-2">
       <NuxtLink
         v-for="feature in featureCards"
         :key="feature.title"
         :to="feature.to"
-        class="site-reveal group mt-12 flex h-full flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition-colors hover:border-primary-300"
+        class="site-reveal group grid min-h-80 bg-white transition-colors hover:bg-primary-50 md:grid-cols-2"
       >
         <NuxtPicture
           :src="feature.image"
           :alt="feature.title"
-          class="block aspect-video overflow-hidden"
+          class="block min-h-56 overflow-hidden md:min-h-full"
           :img-attrs="{ class: 'size-full object-cover transition-transform duration-500 group-hover:scale-105' }"
         />
-        <div class="flex grow flex-col p-6">
+        <div class="flex grow flex-col justify-center p-6 md:p-8">
           <div class="mb-5 flex items-center gap-3">
             <span class="flex size-11 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
               <UIcon

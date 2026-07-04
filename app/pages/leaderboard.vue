@@ -39,23 +39,27 @@ useSeoMeta({
       as="section"
       class="py-20"
     >
-      <div class="grid gap-8 lg:grid-cols-3">
+      <div class="grid gap-8">
         <section
           v-for="group in leaderboardGroups"
           :key="group.title"
-          class="site-reveal rounded-lg border border-neutral-200 bg-white p-6"
+          class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10"
         >
-          <p class="text-xs font-black uppercase tracking-widest text-primary-600">
-            TOP 10
-          </p>
-          <h2 class="mt-3 text-2xl font-black text-neutral-950">
-            {{ group.title }}
-          </h2>
-          <p class="mt-3 min-h-20 leading-7 text-neutral-700">
-            {{ group.description }}
-          </p>
+          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p class="text-xs font-black uppercase tracking-widest text-primary-600">
+                TOP 10
+              </p>
+              <h2 class="mt-3 text-3xl font-black text-neutral-950">
+                {{ group.title }}
+              </h2>
+            </div>
+            <p class="max-w-2xl leading-7 text-neutral-700">
+              {{ group.description }}
+            </p>
+          </div>
 
-          <div class="mt-6 overflow-hidden rounded-lg border border-neutral-200">
+          <div class="mt-8 overflow-hidden rounded-lg border border-neutral-200">
             <table class="w-full text-left text-sm">
               <thead class="bg-neutral-50 text-xs font-black uppercase tracking-widest text-neutral-600">
                 <tr>

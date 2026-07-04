@@ -17,25 +17,9 @@ useSeoMeta({
       image-alt="サポートのイメージ"
     />
 
-    <UContainer
-      as="section"
-      class="py-20"
-    >
-      <div class="grid gap-6 md:grid-cols-3">
-        <SiteInfoCard
-          v-for="topic in supportTopics"
-          :key="topic.title"
-          class="site-reveal"
-          :icon="topic.icon"
-          :title="topic.title"
-          :body="topic.body"
-        />
-      </div>
-    </UContainer>
-
     <section class="bg-neutral-50">
-      <UContainer class="grid gap-10 py-20 lg:grid-cols-2">
-        <div class="site-reveal">
+      <UContainer class="grid gap-8 py-20">
+        <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
           <SiteSectionHeader
             eyebrow="FAQ"
             title="よくある質問"
@@ -47,7 +31,24 @@ useSeoMeta({
           />
         </div>
 
-        <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6">
+        <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
+          <p class="text-xs font-black uppercase tracking-widest text-primary-600">
+            SUPPORT PLAN
+          </p>
+          <h2 class="mt-3 text-3xl font-black text-neutral-950">
+            サブスクリプションサポート案内
+          </h2>
+          <p class="mt-4 max-w-3xl leading-8 text-neutral-700">
+            ワイヤーフレームにあるサブスクリプションサポート案内の枠です。対象プラン、受付範囲、運用担当は未決のため、現在検討中として表示します。
+          </p>
+          <SiteTodoNotice
+            class="mt-8"
+            title="サポート案内の未決事項"
+            :items="[unresolvedItems[1], unresolvedItems[3]]"
+          />
+        </div>
+
+        <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
           <p class="text-xs font-black uppercase tracking-widest text-secondary-700">
             FORM TODO
           </p>

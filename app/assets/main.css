@@ -83,7 +83,7 @@
   }
 
   body {
-    background: var(--color-slate-100);
+    background: #ffffff;
     color: var(--color-slate-950);
     font-family: "Noto Sans JP", sans-serif;
   }
@@ -91,17 +91,17 @@
 
 @layer components {
   .site-glass-header {
-    border-bottom: 3px solid var(--color-orange-400);
-    background:
-      linear-gradient(180deg, var(--color-green-600), var(--color-green-700));
-    box-shadow: none;
-    backdrop-filter: blur(18px) saturate(160%);
+    border-bottom: 1px solid rgb(229 231 235 / 70%);
+    background: rgb(255 255 255 / 95%);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    backdrop-filter: blur(24px) saturate(180%);
   }
 
   .site-glass-menu {
-    border-top: 1px solid rgb(255 255 255 / 16%);
-    background: rgb(1 102 48 / 94%);
-    backdrop-filter: blur(18px) saturate(160%);
+    border-top: 1px solid var(--color-slate-200);
+    background: rgb(255 255 255 / 96%);
+    box-shadow: 0 12px 32px rgb(15 23 42 / 8%);
+    backdrop-filter: blur(24px) saturate(180%);
   }
 
   .site-glass-panel {
@@ -140,7 +140,7 @@
 
   .site-page-surface {
     background:
-      linear-gradient(180deg, var(--color-green-50), var(--color-slate-100));
+      linear-gradient(180deg, #ffffff, var(--color-green-50));
   }
 
   .site-section-card {
@@ -150,8 +150,8 @@
   }
 
   .site-brand-lockup {
-    background: #ffffff;
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 86%);
+    background: transparent;
+    box-shadow: none;
   }
 
   .site-reveal {

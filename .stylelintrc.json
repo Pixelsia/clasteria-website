@@ -5,7 +5,6 @@
     "plugin/no-unsupported-browser-features": [
       true,
       {
-        // Tailwind CSS が自動で対応するため、以下の機能は無視する
         "ignorePartialSupport": true,
         "ignore": [
           "css-nesting",

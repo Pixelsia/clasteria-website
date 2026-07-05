@@ -1,39 +1,68 @@
 <script setup lang="ts">
+useSiteReveal();
+
+useSeoMeta({
+  title: 'ニュース',
+  description: 'Clasteria と Pixelsia 関連のニュース一覧です。',
+});
+
 const articlesList = await useArticlesList();
 
-const displayArticles = articlesList.value.articles.map(article => ({
+const displayArticles = computed(() => articlesList.value.articles.map(article => ({
   ...article,
-  ogImageSrc: useOgImageSrc(`/articles/${article.slug}`, article.ogImage),
-}));
-
-// const sortedArticles = shallowRef<NonNullable<typeof articles.value>>([]);
-// onMounted(() => {
-//   sortedArticles.value = articles.value!
-//     .map(item => ({ ...item, hotScore: calculateHotScore(item.hotDays, item.publishedAt) }))
-//     .toSorted((a, b) => a.hotScore - b.hotScore);
-// });
+  ogImageSrc: article.ogImage?.url ? useOgImageSrc(`/articles/${article.slug}`, article.ogImage) : '',
+  href: `/articles/${article.slug}`,
+  date: formatDate(article.publishedAt, { includeTime: false }),
+})));
 </script>
 
 <template>
   <article>
-    <h1>お知らせ</h1>
-    <ul>
-      <li
-        v-for="article in displayArticles"
-        :key="article.slug"
+    <SitePageHero
+      eyebrow="NEWS"
+      title="ニュース"
+      description="HP 仕様書では、Pixelsia と Connectia におけるニュースを紹介するページです。この実装では既存の articles 機能を壊さず、記事一覧として表示します。"
+      image="/images/clasteria/home-main-visual.png"
+      image-alt="ニュースのイメージ"
+    />
+
+    <UContainer
+      as="section"
+      class="py-20"
+    >
+      <div
+        v-if="displayArticles.length > 0"
+        class="grid gap-8 md:grid-cols-2 lg:grid-cols-3"
       >
-        <NuxtLink :to="`/articles/${article.slug}`">
-          <NuxtPicture
-            :src="article.ogImageSrc"
-            :width="320"
-            :height="168"
-            fit="cover"
-            :alt="article.title"
-          />
-          {{ formatDate(article.publishedAt, { includeTime: false }) }} - {{ article.title }}
-          <div>{{ article.description }}</div>
-        </NuxtLink>
-      </li>
-    </ul>
+        <PostCard
+          v-for="article in displayArticles"
+          :key="article.slug"
+          class="site-reveal"
+          :title="article.title"
+          :date="article.date"
+          tag="News"
+          :href="article.href"
+          :image-url="article.ogImageSrc"
+        />
+      </div>
+
+      <div
+        v-else
+        class="site-reveal rounded-lg border border-neutral-200 bg-neutral-50 p-8"
+      >
+        <h2 class="text-2xl font-black text-neutral-950">
+          記事はまだありません
+        </h2>
+        <p class="mt-3 leading-7 text-neutral-700">
+          ニュースの対象範囲と運用方法は未決です。
+        </p>
+      </div>
+
+      <SiteTodoNotice
+        class="site-reveal mt-10"
+        title="ニュースの未決事項"
+        :items="[unresolvedItems[4]]"
+      />
+    </UContainer>
   </article>
 </template>

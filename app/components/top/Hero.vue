@@ -1,59 +1,4 @@
 <script setup lang="ts">
-/// 背景の画像 marquee
-
-const images = [
-  'https://picsum.photos/256/256?random=1',
-  'https://picsum.photos/256/256?random=2',
-  'https://picsum.photos/256/256?random=3',
-  'https://picsum.photos/256/256?random=4',
-  'https://picsum.photos/256/256?random=5',
-  'https://picsum.photos/256/256?random=6',
-  'https://picsum.photos/256/256?random=7',
-  'https://picsum.photos/256/256?random=8',
-  'https://picsum.photos/256/256?random=9',
-  'https://picsum.photos/256/256?random=10',
-  'https://picsum.photos/256/256?random=11',
-  'https://picsum.photos/256/256?random=12',
-];
-
-const NUM_ROWS = 4;
-const MIN_IMAGES_PER_ROW = 20;
-const EAGER_LOAD_COUNT = 6;
-
-const imageRows = computed(() => {
-  const imagesPerRow = Math.ceil(images.length / NUM_ROWS);
-  const rows: string[][] = Array.from({ length: NUM_ROWS }, () => []);
-
-  images.forEach((image, index) => {
-    const rowIndex = Math.floor(index / imagesPerRow);
-    if (rowIndex < NUM_ROWS) {
-      rows[rowIndex]?.push(image);
-    }
-  });
-
-  return rows.map((row) => {
-    if (row.length === 0) return [];
-    let extended = [...row];
-    while (extended.length < MIN_IMAGES_PER_ROW) {
-      extended = [...extended, ...row];
-    }
-    return extended;
-  });
-});
-
-// 初期表示で見える画像のみ eager ロードし、画面外の画像は遅延ロード
-const shouldEagerLoad = (
-  rowIndex: number,
-  imageIndex: number,
-  rowLength: number,
-): boolean => {
-  const isLtr = rowIndex % 2 === 0;
-  if (isLtr) return imageIndex >= rowLength && imageIndex < rowLength + EAGER_LOAD_COUNT;
-  else return imageIndex < EAGER_LOAD_COUNT;
-};
-
-/// スクロール処理
-
 const heroRef = useTemplateRef('hero');
 const { y } = useScroll(window, { behavior: 'smooth' });
 </script>
@@ -61,122 +6,61 @@ const { y } = useScroll(window, { behavior: 'smooth' });
 <template>
   <section
     ref="hero"
-    class="relative isolate overflow-hidden min-h-screen flex flex-col"
+    class="relative isolate overflow-hidden bg-neutral-950 text-white"
   >
-    <div class="relative flex-1 flex items-center bg-primary-600/80 z-10">
-      <UContainer>
-        <h1 class="text-6xl font-bold text-neutral-50 leading-tight">
-          新しい<span class="text-primary-300">創造</span>を、<br>
-          ここから
+    <NuxtPicture
+      src="/images/clasteria/home-main-visual.png"
+      alt=""
+      class="absolute inset-0 -z-10 block size-full"
+      :img-attrs="{ class: 'size-full object-cover opacity-45' }"
+      loading="eager"
+    />
+    <div class="absolute inset-0 -z-10 bg-gradient-to-b from-neutral-950/70 via-neutral-950/55 to-neutral-950/80" />
+
+    <UContainer class="flex min-h-screen items-center justify-center py-24">
+      <div class="site-reveal mx-auto flex max-w-5xl flex-col items-center gap-7 text-center">
+        <p class="text-xs font-black uppercase tracking-widest text-primary-300">
+          CLASTERIA OFFICIAL
+        </p>
+        <h1 class="text-5xl font-black leading-tight md:text-7xl">
+          遊びと学びが<br>
+          同じ世界で<br>
+          <span class="text-primary-300">つながる。</span>
         </h1>
-        <div class="flex gap-4 mt-8">
+        <p class="max-w-3xl text-lg leading-9 text-neutral-100">
+          Minecraft に Pixelsia の世界を作り、ミニゲームと CodingCraft を通じて自分だけの役割を持てる場所へつなぎます。
+        </p>
+        <div class="flex flex-wrap justify-center gap-3">
           <UButton
-            color="secondary"
+            to="/codingcraft"
+            color="primary"
             trailing-icon="i-heroicons-arrow-right"
-            size="lg"
-            class="rounded-full justify-between pl-6 pr-4 py-4"
-            to="#"
+            size="xl"
           >
-            冒険を始める
+            CodingCraft
           </UButton>
           <UButton
+            to="/onigokko"
             color="neutral"
             variant="outline"
-            size="lg"
-            class="text-neutral-50 border-neutral-50/30 bg-neutral-50/10 hover:bg-neutral-50/25 active:bg-neutral-50/40 rounded-full px-8 py-4"
-            to="#"
+            size="xl"
+            class="site-glass-action"
           >
-            Clasteria とは
+            ミニゲームを見る
           </UButton>
         </div>
-      </UContainer>
-    </div>
-
-    <div class="absolute bottom-8 inset-x-0 flex justify-center z-10">
-      <UButton
-        icon="i-heroicons-chevron-down"
-        variant="ghost"
-        color="neutral"
-        aria-label="次のセクションへスクロール"
-        :ui="{
-          base: 'size-16 rounded-full flex items-center justify-center text-neutral-50/80 hover:bg-neutral-50/10 active:bg-neutral-50/20 focus:bg-neutral-50/20',
-          leadingIcon: 'size-8 animate-bounce mt-2',
-        }"
-        @click="y = heroRef!.offsetTop + heroRef!.offsetHeight"
-      />
-    </div>
-
-    <div
-      class="absolute inset-0"
-      aria-hidden="true"
-    >
-      <div
-        v-for="(row, rowIndex) in imageRows"
-        :key="rowIndex"
-        :class="[
-          'absolute inset-x-0 h-1/4 overflow-hidden',
-          ['top-0', 'top-1/4', 'top-1/2', 'top-3/4'][rowIndex]
-        ]"
-      >
-        <div
-          :class="[
-            'flex h-full w-max',
-            rowIndex % 2 === 0 ? 'animate-marquee-ltr' : 'animate-marquee-rtl',
-          ]"
+        <button
+          class="flex w-fit items-center gap-3 text-sm font-black uppercase tracking-widest text-neutral-200 hover:text-primary-200"
+          type="button"
+          @click="y = heroRef!.offsetTop + heroRef!.offsetHeight"
         >
-          <div
-            v-for="(image, imageIndex) in [...row, ...row]"
-            :key="`image-${imageIndex}`"
-            class="shrink-0 h-full aspect-video overflow-hidden"
-          >
-            <NuxtPicture
-              :src="image"
-              class="w-full h-full"
-              :img-attrs="{
-                class: 'w-full h-full object-cover',
-                alt: '',
-                loading: shouldEagerLoad(rowIndex, imageIndex, row.length)
-                  ? 'eager'
-                  : 'lazy',
-              }"
-            />
-          </div>
-        </div>
+          <UIcon
+            name="i-heroicons-chevron-down"
+            class="size-5"
+          />
+          Scroll
+        </button>
       </div>
-    </div>
+    </UContainer>
   </section>
 </template>
-
-<style scoped>
-/* 画像セットを 2 回繰り返して配置し、50% (1セット分) 移動することで無限ループを実現 */
-
-@keyframes marquee-ltr {
-  0% {
-    transform: translateX(-50%);
-  }
-
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes marquee-rtl {
-  0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-marquee-ltr {
-  animation: marquee-ltr 100s linear infinite;
-  will-change: transform;
-}
-
-.animate-marquee-rtl {
-  animation: marquee-rtl 100s linear infinite;
-  will-change: transform;
-}
-</style>

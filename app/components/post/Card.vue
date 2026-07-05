@@ -8,7 +8,7 @@ withDefaults(defineProps<{
 }>(), {
   tag: 'News',
   imageUrl: '',
-  href: '#',
+  href: '/articles',
 });
 </script>
 
@@ -17,7 +17,7 @@ withDefaults(defineProps<{
     :to="href"
     class="block group"
   >
-    <div class="h-48 bg-neutral-200 dark:bg-neutral-600 rounded-xl mb-4 overflow-hidden">
+    <div class="mb-4 flex h-48 items-center justify-center overflow-hidden rounded-lg bg-neutral-200">
       <NuxtPicture
         v-if="imageUrl"
         :src="imageUrl"
@@ -27,14 +27,19 @@ withDefaults(defineProps<{
           alt: title,
         }"
       />
+      <UIcon
+        v-else
+        name="i-heroicons-newspaper"
+        class="size-10 text-neutral-500"
+      />
     </div>
     <div class="flex items-center gap-2 mb-2">
-      <span class="bg-primary-100 dark:bg-primary-700 text-primary-600 dark:text-primary-300 text-xs px-2 py-1 rounded-full">
+      <span class="rounded-lg bg-primary-100 px-2 py-1 text-xs font-bold text-primary-700">
         {{ tag }}
       </span>
-      <span class="text-primary-600 dark:text-primary-300 text-xs">{{ date }}</span>
+      <span class="text-xs text-neutral-600">{{ date }}</span>
     </div>
-    <h3 class="font-bold text-primary-900 dark:text-primary-200 group-hover:underline">
+    <h3 class="font-black text-neutral-950 group-hover:text-primary-700">
       {{ title }}
     </h3>
   </NuxtLink>

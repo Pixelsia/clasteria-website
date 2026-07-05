@@ -1,57 +1,56 @@
 <script setup lang="ts">
-const newsItems = [
-  {
-    title: '春の大型アップデート：新しいマップ『巨木の森』が追加されました',
-    date: '2025年12月15日',
-    tag: 'News',
-    href: '#',
-  },
-  {
-    title: 'プログラミングコンテスト開催のお知らせ',
-    date: '2025年12月10日',
-    tag: 'News',
-    href: '#',
-  },
-];
+const articlesList = await useArticlesList({ limit: 2 });
+
+const displayArticles = computed(() => articlesList.value.articles.map(article => ({
+  ...article,
+  href: `/articles/${article.slug}`,
+  date: formatDate(article.publishedAt, { includeTime: false }),
+  imageUrl: article.ogImage?.url ? useOgImageSrc(`/articles/${article.slug}`, article.ogImage) : '',
+})));
 </script>
 
 <template>
   <UContainer
     as="section"
-    class="bg-neutral-50 dark:bg-neutral-700 border-2 border-primary-200 dark:border-primary-700 rounded-3xl"
+    class="py-20"
   >
-    <div class="mb-8">
-      <div class="flex justify-between items-center">
-        <div>
-          <h2 class="text-2xl text-primary-900 font-bold">
-            最新ニュース
-          </h2>
-          <p class="text-primary-600 text-sm mt-1">
-            最新のアップデートやイベント情報をお届けします
-          </p>
-        </div>
+    <div class="site-reveal rounded-lg border border-neutral-200 bg-neutral-50 p-6 md:p-10">
+      <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <SiteSectionHeader
+          eyebrow="NEWS"
+          title="ニュース"
+          description="HP 仕様書にあるニュース面は、既存の記事機能を入口として表示します。"
+        />
         <UButton
-          variant="ghost"
+          to="/articles"
           color="primary"
           trailing-icon="i-heroicons-arrow-right"
-          class="gap-6"
-          to="#"
+          variant="ghost"
         >
           すべて見る
         </UButton>
       </div>
-    </div>
-    <div class="p-12">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+      <div
+        v-if="displayArticles.length > 0"
+        class="mt-10 grid grid-cols-1 gap-8 md:grid-cols-2"
+      >
         <PostCard
-          v-for="news in newsItems"
-          :key="news.title"
-          :title="news.title"
-          :date="news.date"
-          :tag="news.tag"
-          :href="news.href"
+          v-for="article in displayArticles"
+          :key="article.slug"
+          :title="article.title"
+          :date="article.date"
+          tag="News"
+          :href="article.href"
+          :image-url="article.imageUrl"
         />
       </div>
+      <p
+        v-else
+        class="mt-10 rounded-lg border border-neutral-200 bg-white p-6 text-neutral-700"
+      >
+        記事が登録されていない場合は、ニュース一覧の枠だけを表示します。
+      </p>
     </div>
   </UContainer>
 </template>

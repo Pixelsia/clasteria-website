@@ -5,102 +5,148 @@ useSeoMeta({
   title: 'かくれんぼ',
   description: 'Clasteria のかくれんぼの参加、擬態、探索、リザルトまでの流れを紹介します。',
 });
+
+const tabs = [
+  { label: 'ルール / 遊び方', to: '#rules', icon: 'i-heroicons-list-bullet', active: true },
+  { label: 'マップ紹介', to: '#maps', icon: 'i-heroicons-map' },
+  { label: 'ランキング', to: '#ranking', icon: 'i-heroicons-trophy' },
+];
+
+const maps = [
+  {
+    label: 'MAP 01',
+    title: '緑の迷宮',
+    description: '木々が生い茂る視界の悪い迷路です。隠れるポイントが多いステージです。',
+    image: '/images/clasteria/clasteria-hero.jpg',
+  },
+  {
+    label: 'MAP 02',
+    title: '古びた神殿',
+    description: '入り組んだ石造りの通路があるステージです。詳細なギミックは未決です。',
+    image: '/images/clasteria/home-main-visual.png',
+  },
+];
 </script>
 
 <template>
   <article>
     <SitePageHero
       eyebrow="KAKURENBO"
-      title="ブロックに擬態し、鬼の探索から隠れる"
+      title="かくれんぼ"
       description="かくれんぼは、メインワールドから参加し、待機部屋で人数確認とマップ投票を行ったあと、逃走者がブロックに擬態して隠れ、鬼が制限時間内に捕獲を狙うミニゲームです。"
       image="/images/clasteria/clasteria-hero.jpg"
       image-alt="かくれんぼのイメージ"
-    >
-      <template #actions>
-        <UButton
-          to="/leaderboard"
-          color="primary"
-          trailing-icon="i-heroicons-trophy"
-          size="xl"
-        >
-          ランキングを見る
-        </UButton>
-        <UButton
-          to="/onigokko"
-          color="neutral"
-          variant="outline"
-          size="xl"
-        >
-          鬼ごっこへ
-        </UButton>
-      </template>
-    </SitePageHero>
+      icon="i-heroicons-eye"
+    />
 
     <UContainer
-      as="section"
-      class="py-20"
+      class="pb-10"
     >
-      <SiteSectionHeader
-        class="site-reveal"
-        eyebrow="FLOW"
-        title="待機、投票、擬態、探索"
-        description="かくれんぼ README の処理フローに沿って、初期公開の紹介ページで扱う範囲を整理しています。"
-      />
+      <SitePageTabs :items="tabs" />
+    </UContainer>
 
-      <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <SiteInfoCard
-          v-for="item in kakurenboFlow"
-          :key="item.title"
-          class="site-reveal"
-          :icon="item.icon"
-          :title="item.title"
-          :body="item.body"
+    <UContainer
+      id="rules"
+      as="section"
+      class="pb-14 md:pb-20"
+    >
+      <div class="site-section-card site-reveal p-6 md:p-10">
+        <SiteSectionHeader
+          eyebrow="FLOW"
+          title="待機、投票、擬態、探索"
+          description="かくれんぼ README の処理フローに沿って、初期公開の紹介ページで扱う範囲を整理しています。"
         />
+
+        <div class="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <SiteInfoCard
+            v-for="item in kakurenboFlow"
+            :key="item.title"
+            :icon="item.icon"
+            :title="item.title"
+            :body="item.body"
+          />
+        </div>
       </div>
     </UContainer>
 
-    <section class="bg-neutral-50">
-      <UContainer class="grid gap-10 py-20 md:grid-cols-2 md:items-center">
-        <div class="site-reveal flex flex-col gap-5">
-          <p class="text-xs font-black uppercase tracking-widest text-primary-600">
-            PLAYER ACTIONS
-          </p>
-          <h2 class="text-3xl font-black leading-tight text-neutral-950 md:text-5xl">
-            逃走者と鬼の役割を明確に見せる
-          </h2>
-          <p class="leading-8 text-neutral-700">
-            仕様では、逃走者は擬態、妨害、挑発、ミッションで生存を狙い、鬼は捕獲ツールで探索します。捕獲後は捕獲済み状態、透明、観戦または移動の動線へ進みます。
-          </p>
-        </div>
-        <div class="site-reveal grid gap-4">
-          <div class="rounded-lg border border-neutral-200 bg-white p-6">
-            <h3 class="text-xl font-black text-neutral-950">
-              逃走者
-            </h3>
-            <p class="mt-3 leading-7 text-neutral-700">
-              擬態ブロックを選び、鬼待機時間中に隠れます。
-            </p>
-          </div>
-          <div class="rounded-lg border border-neutral-200 bg-white p-6">
-            <h3 class="text-xl font-black text-neutral-950">
-              鬼
-            </h3>
-            <p class="mt-3 leading-7 text-neutral-700">
-              鬼解放後に探索し、制限時間内に捕獲を狙います。
-            </p>
-          </div>
+    <section class="bg-green-50">
+      <UContainer
+        id="maps"
+        as="section"
+        class="py-14 md:py-20"
+      >
+        <SiteSectionHeader
+          class="site-reveal"
+          eyebrow="MAPS"
+          title="マップ紹介"
+          description="逃走者が隠れる場所と、鬼が探索する場所の見え方をカードで紹介します。詳細なマップ仕様は確定分だけを表示します。"
+        />
+
+        <div class="mt-10 grid gap-5 md:grid-cols-2">
+          <article
+            v-for="map in maps"
+            :key="map.title"
+            class="site-section-card site-reveal overflow-hidden"
+          >
+            <NuxtPicture
+              :src="map.image"
+              :alt="map.title"
+              class="block aspect-video overflow-hidden"
+              :img-attrs="{ class: 'size-full object-cover' }"
+            />
+            <div class="p-5">
+              <p class="text-xs font-black uppercase tracking-widest text-primary-700">
+                {{ map.label }}
+              </p>
+              <h3 class="mt-2 text-xl font-black text-neutral-950">
+                {{ map.title }}
+              </h3>
+              <p class="mt-3 leading-7 text-neutral-700">
+                {{ map.description }}
+              </p>
+              <UButton
+                class="mt-5"
+                color="primary"
+                variant="outline"
+                disabled
+                block
+              >
+                詳細を見る
+              </UButton>
+            </div>
+          </article>
         </div>
       </UContainer>
     </section>
 
-    <SiteCtaBand
-      eyebrow="NEXT"
-      title="ミニゲームの順位枠へ"
-      description="各ゲーム Top10 の枠は用意していますが、データソースと更新方法は未決です。"
-      primary-label="リーダーボードへ"
-      primary-to="/leaderboard"
-      secondary-label="サポートへ"
-      secondary-to="/support"
-    />
+    <UContainer
+      id="ranking"
+      as="section"
+      class="py-14 md:py-20"
+    >
+      <div class="site-section-card site-reveal flex flex-col items-center p-8 text-center md:p-12">
+        <UIcon
+          name="i-heroicons-trophy"
+          class="size-16 text-yellow-400"
+        />
+        <p class="mt-5 text-xs font-black uppercase tracking-widest text-primary-700">
+          RANKING
+        </p>
+        <h2 class="mt-3 text-3xl font-black text-neutral-950">
+          リーダーボード
+        </h2>
+        <p class="mt-4 max-w-2xl leading-8 text-neutral-700">
+          各ゲーム Top10 の枠へ移動します。データソースと更新方法は未決です。
+        </p>
+        <UButton
+          to="/leaderboard"
+          class="mt-7"
+          color="primary"
+          trailing-icon="i-heroicons-arrow-right"
+        >
+          ランキングページへ移動
+        </UButton>
+      </div>
+    </UContainer>
   </article>
 </template>

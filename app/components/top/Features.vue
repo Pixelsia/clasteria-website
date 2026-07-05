@@ -1,7 +1,7 @@
 <template>
   <UContainer
     as="section"
-    class="py-16 md:py-20"
+    class="py-14 md:py-20"
   >
     <SiteSectionHeader
       class="site-reveal"
@@ -11,12 +11,12 @@
       align="center"
     />
 
-    <div class="mt-12 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-neutral-200 bg-neutral-200 md:grid-cols-2">
+    <div class="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
       <NuxtLink
         v-for="feature in featureCards"
         :key="feature.title"
         :to="feature.to"
-        class="site-glass-panel site-reveal group grid min-h-80 transition-colors hover:bg-primary-50 md:grid-cols-2"
+        class="site-glass-panel site-reveal group grid min-h-80 overflow-hidden rounded-lg transition-colors hover:bg-primary-50 md:grid-cols-2"
       >
         <NuxtPicture
           :src="feature.image"

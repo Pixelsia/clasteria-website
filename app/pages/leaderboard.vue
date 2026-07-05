@@ -5,45 +5,47 @@ useSeoMeta({
   title: 'リーダーボード',
   description: 'Clasteria の各ゲーム Top10 の枠を表示します。実データ連携は未決です。',
 });
+
+const tabs = [
+  { label: 'おにごっこ', to: '#onigokko', icon: 'i-heroicons-bolt', active: true },
+  { label: 'かくれんぼ', to: '#kakurenbo', icon: 'i-heroicons-eye' },
+  { label: 'CodingCraft', to: '#codingcraft', icon: 'i-heroicons-code-bracket-square' },
+];
 </script>
 
 <template>
   <article>
     <SitePageHero
       eyebrow="LEADERBOARD"
-      title="各ゲームの Top10 枠"
+      title="リーダーボード"
       description="HP 仕様書では、リーダーボードは各ゲームのランキング Top10 を紹介するページです。データソース、集計期間、更新頻度は未決のため、初期実装では TODO として枠だけを表示します。"
       image="/images/clasteria/minigame.jpg"
       image-alt="リーダーボードのイメージ"
-    >
-      <template #actions>
-        <UButton
-          to="/onigokko"
-          color="primary"
-          size="xl"
-        >
-          鬼ごっこへ
-        </UButton>
-        <UButton
-          to="/kakurenbo"
-          color="neutral"
-          variant="outline"
-          size="xl"
-        >
-          かくれんぼへ
-        </UButton>
-      </template>
-    </SitePageHero>
+      icon="i-heroicons-trophy"
+    />
 
     <UContainer
       as="section"
-      class="py-20"
+      class="pb-14 md:pb-20"
     >
-      <div class="grid gap-8">
+      <div class="site-section-card site-reveal p-4 md:p-6">
+        <div class="grid gap-4 lg:grid-cols-2 lg:items-center">
+          <SitePageTabs :items="tabs" />
+          <UInput
+            icon="i-heroicons-magnifying-glass"
+            placeholder="プレイヤー検索（TODO）"
+            disabled
+            size="lg"
+          />
+        </div>
+      </div>
+
+      <div class="mt-8 grid gap-8">
         <section
           v-for="group in leaderboardGroups"
+          :id="group.title.includes('鬼ごっこ') ? 'onigokko' : group.title.includes('かくれんぼ') ? 'kakurenbo' : 'codingcraft'"
           :key="group.title"
-          class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10"
+          class="site-section-card site-reveal p-6 md:p-10"
         >
           <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -59,9 +61,9 @@ useSeoMeta({
             </p>
           </div>
 
-          <div class="mt-8 overflow-hidden rounded-lg border border-neutral-200">
+          <div class="mt-8 overflow-hidden rounded-lg border border-primary-100">
             <table class="w-full text-left text-sm">
-              <thead class="bg-neutral-50 text-xs font-black uppercase tracking-widest text-neutral-600">
+              <thead class="bg-primary-600 text-xs font-black uppercase tracking-widest text-white">
                 <tr>
                   <th class="px-4 py-3">
                     Rank

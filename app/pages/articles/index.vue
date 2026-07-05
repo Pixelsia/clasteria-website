@@ -24,11 +24,12 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
       description="HP 仕様書では、Pixelsia と Connectia におけるニュースを紹介するページです。この実装では既存の articles 機能を壊さず、記事一覧として表示します。"
       image="/images/clasteria/home-main-visual.png"
       image-alt="ニュースのイメージ"
+      icon="i-heroicons-newspaper"
     />
 
     <UContainer
       as="section"
-      class="py-20"
+      class="pb-14 md:pb-20"
     >
       <div
         v-if="displayArticles.length > 0"
@@ -48,7 +49,7 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
 
       <div
         v-else
-        class="site-reveal rounded-lg border border-neutral-200 bg-neutral-50 p-8"
+        class="site-section-card site-reveal p-8"
       >
         <h2 class="text-2xl font-black text-neutral-950">
           記事はまだありません

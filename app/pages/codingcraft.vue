@@ -11,10 +11,11 @@ useSeoMeta({
   <article>
     <SitePageHero
       eyebrow="CODINGCRAFT"
-      title="Minecraft とビジュアルプログラミングで学ぶ"
+      title="プログラミング"
       description="CodingCraft は、ブロックを用いたビジュアルプログラミングと Minecraft でプログラミングを学習するコンテンツです。コース学習、サンドボックス、サバイバル、対戦モードの候補が仕様に整理されています。"
       image="/images/clasteria/codingcraft.jpg"
       image-alt="CodingCraft のイメージ"
+      icon="i-heroicons-code-bracket-square"
     >
       <template #actions>
         <UButton
@@ -38,7 +39,7 @@ useSeoMeta({
 
     <UContainer
       as="section"
-      class="py-20"
+      class="py-14 md:py-20"
     >
       <SiteSectionHeader
         class="site-reveal"
@@ -59,7 +60,7 @@ useSeoMeta({
       </div>
     </UContainer>
 
-    <section class="bg-neutral-50">
+    <section class="bg-green-50">
       <UContainer class="grid gap-10 py-20 md:grid-cols-2 md:items-center">
         <div class="site-reveal">
           <NuxtPicture
@@ -80,7 +81,7 @@ useSeoMeta({
             Web UI 仕様では、OTP を利用した MC アカウントログイン、プロジェクト一覧、blocky を使ったコーディング画面、学習モード時の課題表示が整理されています。実操作の画面詳細は未決です。
           </p>
           <div class="grid gap-3 sm:grid-cols-2">
-            <div class="rounded-lg border border-neutral-200 bg-white p-4">
+            <div class="site-section-card p-4">
               <h3 class="font-black text-neutral-950">
                 使い方
               </h3>
@@ -88,7 +89,7 @@ useSeoMeta({
                 概要ページとして操作の流れだけを案内します。
               </p>
             </div>
-            <div class="rounded-lg border border-neutral-200 bg-white p-4">
+            <div class="site-section-card p-4">
               <h3 class="font-black text-neutral-950">
                 マップコンテンツ
               </h3>

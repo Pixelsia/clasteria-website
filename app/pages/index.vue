@@ -8,7 +8,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <article class="-mt-20">
+  <article>
     <TopHero />
     <TopFeatures />
     <TopNews />

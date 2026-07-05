@@ -15,7 +15,6 @@ useSeoMeta({
       description="README では、ログインは今後実装で、初期公開では飛べるけど Coming soon とする指定があります。ID server、Google ログイン、Minecraft OTP 連携の画面分担は未決です。"
       image="/images/clasteria/home-main-visual.png"
       image-alt="ログイン Coming soon のイメージ"
-      icon="i-heroicons-arrow-right-on-rectangle"
     >
       <template #actions>
         <UButton
@@ -38,9 +37,9 @@ useSeoMeta({
 
     <UContainer
       as="section"
-      class="pb-14 md:pb-20"
+      class="py-20"
     >
-      <div class="site-section-card site-reveal mx-auto max-w-3xl p-6 md:p-10">
+      <div class="site-reveal mx-auto max-w-3xl rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
         <p class="text-xs font-black uppercase tracking-widest text-primary-600">
           LOGIN FORM
         </p>

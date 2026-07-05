@@ -11,16 +11,15 @@ useSeoMeta({
   <article>
     <SitePageHero
       eyebrow="SUPPORT"
-      title="サポート"
+      title="Pixels Support へのコンタクト"
       description="HP 仕様書では、サポートページに Pixels Support へのコンタクトページとお問い合わせフォームを置くことが求められています。フォーム送信先は未決のため、初期実装では送信しません。"
       image="/images/clasteria/clasteria-hero.jpg"
       image-alt="サポートのイメージ"
-      icon="i-heroicons-lifebuoy"
     />
 
-    <section>
-      <UContainer class="grid gap-8 pb-14 md:pb-20">
-        <div class="site-section-card site-reveal p-6 md:p-10">
+    <section class="bg-neutral-50">
+      <UContainer class="grid gap-8 py-20">
+        <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
           <SiteSectionHeader
             eyebrow="FAQ"
             title="よくある質問"
@@ -32,7 +31,7 @@ useSeoMeta({
           />
         </div>
 
-        <div class="site-section-card site-reveal p-6 md:p-10">
+        <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
           <p class="text-xs font-black uppercase tracking-widest text-primary-600">
             SUPPORT PLAN
           </p>
@@ -49,7 +48,7 @@ useSeoMeta({
           />
         </div>
 
-        <div class="site-section-card site-reveal p-6 md:p-10">
+        <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
           <p class="text-xs font-black uppercase tracking-widest text-secondary-700">
             FORM TODO
           </p>

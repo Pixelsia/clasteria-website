@@ -15,7 +15,6 @@ useSeoMeta({
       description="README では、購入・登録は今後実装で、初期公開では飛べるけど Coming soon とする指定があります。プラン、課金状態、支払い方法、サブスクリプション管理の導線は未決です。"
       image="/images/clasteria/clasteria-hero.jpg"
       image-alt="購入・登録 Coming soon のイメージ"
-      icon="i-heroicons-shopping-bag"
     >
       <template #actions>
         <UButton
@@ -38,9 +37,9 @@ useSeoMeta({
 
     <UContainer
       as="section"
-      class="pb-14 md:pb-20"
+      class="py-20"
     >
-      <div class="site-section-card site-reveal p-6 text-center md:p-10">
+      <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 text-center md:p-10">
         <p class="text-xs font-black uppercase tracking-widest text-primary-600">
           REGISTER FLOW
         </p>

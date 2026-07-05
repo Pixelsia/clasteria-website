@@ -2,7 +2,6 @@ export type SiteNavItem = {
   label: string;
   to: string;
   eyebrow: string;
-  icon: string;
 };
 
 export type FeatureCard = {
@@ -38,18 +37,18 @@ export type TodoItem = {
 };
 
 export const primaryNavItems = [
-  { label: 'Home', to: '/', eyebrow: 'HOME', icon: 'i-heroicons-home' },
-  { label: 'プログラミング', to: '/codingcraft', eyebrow: 'CODINGCRAFT', icon: 'i-heroicons-code-bracket-square' },
-  { label: '鬼ごっこ', to: '/onigokko', eyebrow: 'ONIGOKKO', icon: 'i-heroicons-bolt' },
-  { label: 'かくれんぼ', to: '/kakurenbo', eyebrow: 'KAKURENBO', icon: 'i-heroicons-eye' },
-  { label: 'リーダーボード', to: '/leaderboard', eyebrow: 'LEADERBOARD', icon: 'i-heroicons-trophy' },
-  { label: 'サポート', to: '/support', eyebrow: 'SUPPORT', icon: 'i-heroicons-lifebuoy' },
-  { label: 'ニュース', to: '/articles', eyebrow: 'NEWS', icon: 'i-heroicons-newspaper' },
+  { label: 'Home', to: '/', eyebrow: 'HOME' },
+  { label: 'プログラミング', to: '/codingcraft', eyebrow: 'CODINGCRAFT' },
+  { label: '鬼ごっこ', to: '/onigokko', eyebrow: 'ONIGOKKO' },
+  { label: 'かくれんぼ', to: '/kakurenbo', eyebrow: 'KAKURENBO' },
+  { label: 'リーダーボード', to: '/leaderboard', eyebrow: 'LEADERBOARD' },
+  { label: 'サポート', to: '/support', eyebrow: 'SUPPORT' },
+  { label: 'ニュース', to: '/articles', eyebrow: 'NEWS' },
 ] satisfies SiteNavItem[];
 
 export const accountNavItems = [
-  { label: 'ログイン', to: '/login', eyebrow: 'LOGIN', icon: 'i-heroicons-arrow-right-on-rectangle' },
-  { label: '購入・登録', to: '/register', eyebrow: 'REGISTER', icon: 'i-heroicons-shopping-bag' },
+  { label: 'ログイン', to: '/login', eyebrow: 'LOGIN' },
+  { label: '購入・登録', to: '/register', eyebrow: 'REGISTER' },
 ] satisfies SiteNavItem[];
 
 export const siteNavItems = [
@@ -59,7 +58,7 @@ export const siteNavItems = [
 
 export const featureCards = [
   {
-    title: 'プログラミング',
+    title: 'CodingCraft',
     description: 'ブロックを用いたビジュアルプログラミングと Minecraft で、学習モードやサンドボックスを扱う学習コンテンツです。',
     to: '/codingcraft',
     image: '/images/clasteria/codingcraft.jpg',

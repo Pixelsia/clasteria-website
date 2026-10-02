@@ -4,21 +4,30 @@ import { createEditorSectionVNode } from '~/composables/editorSection';
 import type { Component, Editor } from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import { configureHomeEditorCanvas } from '~/utils/editorCanvas';
-import HomeSectionView from '~/components/top/HomeSection.vue';
+import PageSectionView from '~/components/editor/PageSection.vue';
 import {
-  createDefaultHomeDocument, createHomeSection, homeDraftStorageKey, homePreviewStorageKey, homeFieldLabels,
-  homeImages, homeSectionLabels, maxHomeDocumentBytes, maxHomeSections, parseHomeDocument,
-  serializeHomeDocument, validateHomeDocument,
-} from '~/utils/homeDocument';
-import type { HomeDocument, HomeSection, HomeSectionKind } from '~/utils/homeDocument';
+  createDefaultPageDocument, createPageSection, pageFieldLabels,
+  pageImages, pageSectionLabels, maxPageDocumentBytes, maxPageSections, parsePageDocument,
+  serializePageDocument, validatePageDocument, pageDefinitions, allowedPageSectionKinds,
+  pageDestinations, isRequiredPageSection, pageIcons, serializeArticleMarkdown,
+} from '~/utils/pageDocument';
+import { homeImages } from '~/utils/homeDocument';
+import type { PageDocument, PageSection, PageSectionKind, PageId } from '~/utils/pageDocument';
 import {
-  acknowledgeHomeDraftSave, canApplyServerHomeDraft, createHomeDraftClientState, homeDraftRecoveryStorageKey,
-  homeDraftRequestTimeoutMs,
-  homeDraftResponseError, homeDraftSyncStorageKey, HomeDraftRequestError, isHomeDraftServerDirty,
-  parseServerHomeDraftResponse, recordHomeDraftEdit, restoreHomeDraftSyncState, serializeHomeDraftSyncState,
-} from '~/utils/homeDraftClient';
-import type { ServerHomeDraft } from '~/utils/homeDraftClient';
+  acknowledgePageDraftSave, canApplyServerPageDraft, createPageDraftClientState, pageStorageKeys,
+  pageDraftRequestTimeoutMs, pageDraftResponseError, PageDraftRequestError, isPageDraftServerDirty,
+  parseServerPageDraftResponse, recordPageDraftEdit, restorePageDraftSyncState, serializePageDraftSyncState,
+} from '~/utils/pageDraftClient';
+import type { ServerPageDraft } from '~/utils/pageDraftClient';
 
+const props = withDefaults(defineProps<{ page?: PageId }>(), { page: 'home' });
+// The parent keys this component by page. Each page owns requests, history and storage.
+const pageId = props.page;
+const pageDefinition = pageDefinitions.find(page => page.id === pageId)!;
+const storageKeys = pageStorageKeys(pageId);
+const availableKinds = allowedPageSectionKinds(pageId).filter(kind => !isRequiredPageSection(kind));
+const pendingPageSwitch = ref<PageId>();
+let permittedPageSwitch: PageId | undefined;
 const appContext = getCurrentInstance()!.appContext;
 const canvas = useTemplateRef('canvas');
 const blocks = useTemplateRef('blocks');
@@ -26,8 +35,8 @@ const layers = useTemplateRef('layers');
 const fileInput = useTemplateRef('fileInput');
 const noticeToggle = useTemplateRef<HTMLButtonElement>('noticeToggle');
 const noticeVisible = ref(true);
-const selected = shallowRef<HomeSection>();
-const sectionList = ref<HomeSection[]>([]);
+const selected = shallowRef<PageSection>();
+const sectionList = ref<PageSection[]>([]);
 const ready = ref(false);
 const canvasReady = ref(false);
 const status = ref('エディターを読み込んでいます…');
@@ -36,18 +45,19 @@ const canUndo = ref(false);
 const canRedo = ref(false);
 const resetOpen = ref(false);
 const device = ref('Desktop');
-const draftState = shallowRef(createHomeDraftClientState(createDefaultHomeDocument()));
+const draftState = shallowRef(createPageDraftClientState(createDefaultPageDocument(pageId)));
 const serverBusy = ref<'checking' | 'loading' | 'saving' | null>(null);
 const serverStatus = ref('サーバーの下書きを確認します');
-const serverError = shallowRef<HomeDraftRequestError>();
-const availableServerDraft = shallowRef<ServerHomeDraft | null>(null);
-const pendingServerLoad = shallowRef<{ draft: ServerHomeDraft; generation: number }>();
+const serverError = shallowRef<PageDraftRequestError>();
+const availableServerDraft = shallowRef<ServerPageDraft | null>(null);
+const pendingServerLoad = shallowRef<{ draft: ServerPageDraft; generation: number }>();
 const serverConflict = ref(false);
 const invalidDraft = ref(false);
 const protectedLocalDraft = ref<string>();
 const originalBackup = ref<string>();
 let protectedLocalGeneration = 0;
-const serverDirty = computed(() => invalidDraft.value || isHomeDraftServerDirty(draftState.value));
+let localSaveError: string | undefined;
+const serverDirty = computed(() => invalidDraft.value || isPageDraftServerDirty(draftState.value));
 const serverSavedAt = computed(() => draftState.value.base
   ? new Date(draftState.value.base.updatedAt).toLocaleString('ja-JP')
   : '');
@@ -55,7 +65,7 @@ const saveRequiresLoad = computed(() => {
   const available = availableServerDraft.value;
   const base = draftState.value.base;
   return serverConflict.value || (!!available && (!base || available.revision !== base.revision
-    || serializeHomeDocument(available.document) !== serializeHomeDocument(base.document)));
+    || serializePageDocument(available.document) !== serializePageDocument(base.document)));
 });
 let serverRequest: AbortController | undefined;
 let editor: Editor | undefined;
@@ -63,11 +73,46 @@ let syncing = false;
 let disposed = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let canvasTimer: ReturnType<typeof setTimeout> | undefined;
-const destinations = [
-  { label: 'Home', value: '/' }, { label: 'ニュース', value: '/articles' }, { label: 'お問い合わせ', value: '/support' },
-  { label: 'CodingCraft（外部）', value: 'https://codingcraft.pixelsia.net/login' },
-  { label: 'Discord（外部）', value: 'https://discord.gg/TwTPa4Yp4h' }, { label: 'サポートメール', value: 'mailto:support@pixelsia.net' },
-];
+const destinations = pageDestinations(pageId);
+const iconOptions = pageIcons.map(icon => ({ label: icon.replace('i-heroicons-', ''), value: icon }));
+const imageOptions = computed(() => pageId === 'home' ? homeImages : pageImages.filter(image => image.value || selected.value?.kind === 'split-content'));
+function fixedField(key: string) {
+  return (selected.value?.kind === 'article-meta' && ['brand', 'publicationStatus'].includes(key))
+    || (selected.value?.kind === 'support-contact' && ['emailLabel', 'emailTo', 'discordTo'].includes(key));
+}
+function fieldOptions(key: string) {
+  if (key === 'image') return imageOptions.value;
+  if (key.endsWith('Icon')) return iconOptions;
+  return destinations;
+}
+function downloadArticle() {
+  try {
+    const current = documentFromEditor();
+    const blob = new Blob([serializeArticleMarkdown(current)], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${current.sections.find(section => section.kind === 'article-meta')?.content.slug || 'clasteria-article-draft'}.md`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.value = 'Markdown の下書きを書き出しました。公開には内容の確認と別の反映作業が必要です';
+  }
+  catch (cause) { error.value = (cause as Error).message; }
+}
+function requestPageSwitch(value: string) {
+  if (value === pageId || !pageDefinitions.some(page => page.id === value) || serverBusy.value) return;
+  if (serverDirty.value || invalidDraft.value || protectedLocalDraft.value !== undefined) {
+    pendingPageSwitch.value = value as PageId;
+    return;
+  }
+  switchPage(value as PageId);
+}
+function switchPage(page: PageId) {
+  if (!pageDefinitions.some(item => item.id === page) || serverBusy.value || !saveDraft()) return;
+  pendingPageSwitch.value = undefined;
+  permittedPageSwitch = page;
+  navigateTo(`/editor?page=${page}`);
+}
 
 async function dismissNotice() {
   noticeVisible.value = false;
@@ -88,8 +133,8 @@ function uniqueId() {
 function selectedModel() {
   return editor?.getSelected();
 }
-function documentFromEditor(): HomeDocument {
-  return validateHomeDocument({ version: 1, page: 'home', sections: editor?.getComponents().map((component: Component) => component.get('section')) ?? [] });
+function documentFromEditor(): PageDocument {
+  return validatePageDocument({ version: 1, page: pageId, sections: editor?.getComponents().map((component: Component) => component.get('section')) ?? [] });
 }
 function updateState() {
   if (!editor || syncing) return;
@@ -108,19 +153,21 @@ function saveDraft() {
         status.value = '読み込めない元のバックアップを保持しています。必要に応じて書き出してください';
         return false;
       }
-      const recovered = localStorage.getItem(homeDraftRecoveryStorageKey);
+      const recovered = localStorage.getItem(storageKeys.recovery);
       if (recovered !== null && recovered !== original) {
         throw new Error('別の元バックアップが保管されているため、自動保存を停止しました。元のバックアップと現在の下書きを書き出して保管してください。');
       }
       // Preserve the exact unreadable text before replacing the active backup.
-      localStorage.setItem(homeDraftRecoveryStorageKey, original);
+      localStorage.setItem(storageKeys.recovery, original);
       originalBackup.value = original;
     }
-    localStorage.setItem(homeDraftStorageKey, draftState.value.current);
+    localStorage.setItem(storageKeys.draft, draftState.value.current);
     protectedLocalDraft.value = undefined;
     status.value = 'このブラウザーに保存済み';
+    if (error.value === localSaveError) error.value = '';
+    localSaveError = undefined;
     try {
-      localStorage.setItem(homeDraftSyncStorageKey, serializeHomeDraftSyncState(draftState.value));
+      localStorage.setItem(storageKeys.sync, serializePageDraftSyncState(draftState.value));
     }
     catch { status.value = 'このブラウザーに保存済み。次回はサーバーの下書きを読み込み直してください'; }
     return true;
@@ -129,12 +176,13 @@ function saveDraft() {
     error.value = protectedLocalDraft.value !== undefined
       ? `元のバックアップを保護するため、自動保存を停止しています。元のバックアップと現在の下書きを書き出してください。${cause instanceof Error ? cause.message : ''}`
       : cause instanceof Error ? cause.message : '保存できませんでした。';
+    localSaveError = error.value;
     status.value = '保存できません。下書きを書き出して保管してください';
     return false;
   }
 }
 function trackDocument() {
-  draftState.value = recordHomeDraftEdit(draftState.value, documentFromEditor());
+  draftState.value = recordPageDraftEdit(draftState.value, documentFromEditor());
   invalidDraft.value = false;
 }
 function changed() {
@@ -151,7 +199,7 @@ function changed() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveDraft, 300);
 }
-function applyDocument(document: HomeDocument, serverDraft?: ServerHomeDraft) {
+function applyDocument(document: PageDocument, serverDraft?: ServerPageDraft) {
   if (!editor) return;
   const generation = draftState.value.generation;
   syncing = true;
@@ -195,21 +243,26 @@ function moveSection(offset: number) {
   // GrapesJS uses the pre-removal insertion boundary when moving down.
   if (next >= 0 && next < sectionList.value.length) model.move(wrapper, { at: offset > 0 ? next + 1 : next });
 }
-function addSection(kind: HomeSectionKind) {
-  if (!editor || sectionList.value.length >= maxHomeSections) return;
-  const [model] = editor.addComponents({ type: 'clasteria-section', section: createHomeSection(kind, uniqueId()) });
+function addSection(kind: PageSectionKind) {
+  if (!editor || sectionList.value.length >= maxPageSections) return;
+  const [model] = editor.addComponents({ type: 'clasteria-section', section: createPageSection(kind, uniqueId()) });
   if (model) editor.select(model);
 }
 function duplicateSection() {
   const model = selectedModel();
-  if (!editor || !model || !selected.value || selected.value.kind === 'hero' || sectionList.value.length >= maxHomeSections) return;
-  const section = JSON.parse(JSON.stringify(selected.value)) as HomeSection;
+  if (!editor || !model || !selected.value || isRequiredPageSection(selected.value.kind)
+    || sectionList.value.length >= maxPageSections) return;
+  const section = JSON.parse(JSON.stringify(selected.value)) as PageSection;
   section.id = uniqueId();
   const [copy] = editor.addComponents({ type: 'clasteria-section', section }, { at: model.index() + 1 });
   if (copy) editor.select(copy);
 }
+function protectedSection(section: PageSection) {
+  return isRequiredPageSection(section.kind) || sectionList.value.some(item => Object.entries(item.content)
+    .some(([key, value]) => key.endsWith('To') && value === `#${section.id}`));
+}
 function removeSection() {
-  if (selected.value?.kind === 'hero') return;
+  if (selected.value && protectedSection(selected.value)) return;
   selectedModel()?.remove();
   editor?.select(editor.getComponents().at(0));
 }
@@ -237,14 +290,14 @@ function downloadJson(json: string, filename: string) {
 function downloadOriginalBackup() {
   if (originalBackup.value === undefined) return;
   try {
-    downloadJson(originalBackup.value, 'clasteria-home-original-backup.json');
+    downloadJson(originalBackup.value, `clasteria-${pageId}-original-backup.json`);
     status.value = '元のバックアップを書き出しました。ファイルを保管してください';
   }
   catch (cause) { error.value = (cause as Error).message; }
 }
 function downloadDraft() {
   try {
-    downloadJson(serializeHomeDocument(documentFromEditor()), 'clasteria-home-draft.json');
+    downloadJson(serializePageDocument(documentFromEditor()), `clasteria-${pageId}-draft.json`);
     status.value = '下書きを書き出しました。ファイルを保管してください';
   }
   catch (cause) { error.value = (cause as Error).message; }
@@ -255,10 +308,11 @@ async function importDraft(event: Event) {
   if (!file) return;
   const generation = draftState.value.generation;
   try {
-    if (file.size > maxHomeDocumentBytes) throw new Error('下書きファイルは 100 KB 以下にしてください。');
-    const document = parseHomeDocument(await file.text());
+    if (file.size > maxPageDocumentBytes) throw new Error('下書きファイルは 100 KB 以下にしてください。');
+    const document = parsePageDocument(await file.text());
+    if (document.page !== pageId) throw new Error('別のページの下書きです。ページを切り替えてから読み込んでください。');
     if (disposed) return;
-    if (!canApplyServerHomeDraft(draftState.value, generation)) {
+    if (!canApplyServerPageDraft(draftState.value, generation)) {
       throw new Error('読み込み中に編集されたため、JSON の読み込みを中止しました。もう一度ファイルを選択してください。');
     }
     applyDocument(document);
@@ -270,42 +324,43 @@ async function importDraft(event: Event) {
 }
 function preview() {
   try {
-    sessionStorage.setItem(homePreviewStorageKey, serializeHomeDocument(documentFromEditor()));
-    navigateTo('/editor/preview');
+    sessionStorage.setItem(storageKeys.preview, serializePageDocument(documentFromEditor()));
+    saveDraft();
+    navigateTo(`/editor/preview?page=${pageId}`);
   }
   catch (cause) { error.value = `プレビューを開けませんでした: ${(cause as Error).message}`; }
 }
 function resetDraft() {
-  applyDocument(createDefaultHomeDocument());
+  applyDocument(createDefaultPageDocument(pageId));
   error.value = '';
   saveDraft();
   resetOpen.value = false;
 }
 
-async function requestServerDraft(method: 'GET' | 'PUT', body?: { document: HomeDocument; baseRevision: number }) {
+async function requestServerDraft(method: 'GET' | 'PUT', body?: { document: PageDocument; baseRevision: number }) {
   const controller = new AbortController();
   serverRequest = controller;
-  const timer = setTimeout(() => controller.abort(), homeDraftRequestTimeoutMs);
+  const timer = setTimeout(() => controller.abort(), pageDraftRequestTimeoutMs);
   try {
-    const response = await fetch('/api/editor/home', {
+    const response = await fetch(`/api/editor/${pageId}`, {
       method, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal,
       headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (!response.ok) throw homeDraftResponseError(response.status);
+    if (!response.ok) throw pageDraftResponseError(response.status);
     let result: unknown;
     try {
       result = await response.json();
     }
-    catch { throw new HomeDraftRequestError('invalid_response', 'サーバーの応答を確認できませんでした。ログインと保存先の設定を確認してください。'); }
-    return parseServerHomeDraftResponse(result);
+    catch { throw new PageDraftRequestError('invalid_response', 'サーバーの応答を確認できませんでした。ログインと保存先の設定を確認してください。'); }
+    return parseServerPageDraftResponse(result, pageId);
   }
   catch (cause) {
-    if (cause instanceof HomeDraftRequestError) throw cause;
+    if (cause instanceof PageDraftRequestError) throw cause;
     if (controller.signal.aborted) {
-      throw new HomeDraftRequestError('timeout', '通信がタイムアウトしました。保存結果は未確認です。下書きを書き出して保管し、接続を再確認してください。');
+      throw new PageDraftRequestError('timeout', '通信がタイムアウトしました。保存結果は未確認です。下書きを書き出して保管し、接続を再確認してください。');
     }
-    throw new HomeDraftRequestError('network', '通信できませんでした。ネットワークとログイン状態を確認し、もう一度お試しください。現在の編集内容は残っています。');
+    throw new PageDraftRequestError('network', '通信できませんでした。ネットワークとログイン状態を確認し、もう一度お試しください。現在の編集内容は残っています。');
   }
   finally {
     clearTimeout(timer);
@@ -313,9 +368,9 @@ async function requestServerDraft(method: 'GET' | 'PUT', body?: { document: Home
   }
 }
 function reportServerError(cause: unknown) {
-  serverError.value = cause instanceof HomeDraftRequestError
+  serverError.value = cause instanceof PageDraftRequestError
     ? cause
-    : new HomeDraftRequestError('validation', cause instanceof Error ? cause.message : '下書きを保存できませんでした。');
+    : new PageDraftRequestError('validation', cause instanceof Error ? cause.message : '下書きを保存できませんでした。');
   if (serverError.value.code === 'conflict') serverConflict.value = true;
 }
 async function checkServerDraft(allowAutoLoad = false, requestLoad = false) {
@@ -337,7 +392,7 @@ async function checkServerDraft(allowAutoLoad = false, requestLoad = false) {
       serverStatus.value = 'サーバーに下書きはありません。「下書きを保存」で作成できます';
       return;
     }
-    if (allowAutoLoad && canApplyServerHomeDraft(draftState.value, generation)) {
+    if (allowAutoLoad && canApplyServerPageDraft(draftState.value, generation)) {
       applyDocument(draft.document, draft);
       saveDraft();
       serverStatus.value = 'サーバーの下書きを読み込みました';
@@ -360,7 +415,7 @@ async function checkServerDraft(allowAutoLoad = false, requestLoad = false) {
 function confirmServerLoad() {
   const pending = pendingServerLoad.value;
   if (!pending || serverBusy.value) return;
-  if (!canApplyServerHomeDraft(draftState.value, pending.generation)) {
+  if (!canApplyServerPageDraft(draftState.value, pending.generation)) {
     pendingServerLoad.value = { ...pending, generation: draftState.value.generation };
     serverStatus.value = '確認中に編集されました。新しい変更も書き出してから、もう一度「置き換えて読み込む」を押してください';
     return;
@@ -385,8 +440,8 @@ async function saveServerDraft() {
     const submitted = { document: documentFromEditor(), baseRevision: draftState.value.base?.revision ?? 0 };
     const draft = await requestServerDraft('PUT', submitted);
     if (disposed) return;
-    if (!draft) throw new HomeDraftRequestError('invalid_response', '保存結果を確認できませんでした。接続を再確認してください。');
-    draftState.value = acknowledgeHomeDraftSave(draftState.value, draft, submitted);
+    if (!draft) throw new PageDraftRequestError('invalid_response', '保存結果を確認できませんでした。接続を再確認してください。');
+    draftState.value = acknowledgePageDraftSave(draftState.value, draft, submitted);
     availableServerDraft.value = draft;
     serverConflict.value = false;
     if (protectedLocalDraft.value !== undefined) protectedLocalGeneration = -1;
@@ -400,6 +455,21 @@ async function saveServerDraft() {
   }
   finally { if (!disposed) serverBusy.value = null; }
 }
+
+onBeforeRouteUpdate((to) => {
+  const target = pageDefinitions.find(page => page.id === to.query.page)?.id ?? 'home';
+  if (target === pageId) return;
+  if (serverBusy.value || !saveDraft()) return false;
+  if (permittedPageSwitch === target) return;
+  if (serverDirty.value) {
+    pendingPageSwitch.value = target;
+    return false;
+  }
+});
+onBeforeRouteLeave(() => {
+  // Failed local storage must not silently discard edits on Preview/Back/navigation.
+  if (ready.value && (serverBusy.value || !saveDraft())) return false;
+});
 
 onMounted(async () => {
   try {
@@ -421,21 +491,21 @@ onMounted(async () => {
           model: {
             defaults: { droppable: false, editable: false, stylable: false, copyable: false, traits: [], draggable: (_source: Component, target: Component) => target.is('wrapper') },
             init() {
-              const section = this.get('section') as HomeSection;
+              const section = this.get('section') as PageSection;
               if (!section) return;
               if (section.id === 'new') this.set('section', { ...section, id: uniqueId() });
-              this.set('name', homeSectionLabels[section.kind]);
-              this.set('removable', section.kind !== 'hero');
-              this.on('change:section', () => this.set('name', homeSectionLabels[(this.get('section') as HomeSection).kind]));
+              this.set('name', pageSectionLabels[section.kind]);
+              this.set('removable', !isRequiredPageSection(section.kind) && section.id !== 'how-to-play');
+              this.on('change:section', () => this.set('name', pageSectionLabels[(this.get('section') as PageSection).kind]));
             },
           },
           view: {
             init() { this.listenTo(this.model, 'change:section', this.renderSection); },
             onRender() { this.renderSection(); },
             renderSection() {
-              const section = this.model.get('section') as HomeSection;
+              const section = this.model.get('section') as PageSection;
               if (!section) return;
-              const vnode = createEditorSectionVNode(HomeSectionView, section, appContext);
+              const vnode = createEditorSectionVNode(PageSectionView, section, appContext, pageId);
               render(vnode, this.el);
               this.el.setAttribute('data-editor-section', section.id);
             },
@@ -451,10 +521,10 @@ onMounted(async () => {
     // Do not expose the native HTML paste/import or arbitrary component registry.
     editor.Keymaps.remove('core:copy');
     editor.Keymaps.remove('core:paste');
-    for (const kind of ['about', 'news', 'contact'] as const) {
+    for (const kind of availableKinds) {
       editor.Blocks.add(kind, {
-        label: homeSectionLabels[kind], category: '公開済みセクション',
-        content: { type: 'clasteria-section', section: createHomeSection(kind, 'new') },
+        label: pageSectionLabels[kind], category: 'このページのセクション',
+        content: { type: 'clasteria-section', section: createPageSection(kind, 'new') },
         select: true,
       });
     }
@@ -468,22 +538,24 @@ onMounted(async () => {
     }, 10_000);
     editor.on('component:add', (component: Component) => {
       if (syncing) return;
-      if (editor!.getComponents().length > maxHomeSections) {
+      if (editor!.getComponents().length > maxPageSections) {
         component.remove();
-        error.value = `セクションは最大 ${maxHomeSections} 個です。`;
+        error.value = `セクションは最大 ${maxPageSections} 個です。`;
       }
     });
     editor.on('component:selected component:deselected', updateState);
     editor.on('update', changed);
-    let initial = createDefaultHomeDocument();
+    let initial = createDefaultPageDocument(pageId);
     let hasLocalBackup = false;
     let savedSync: string | null = null;
     let saved: string | null = null;
     try {
-      saved = localStorage.getItem(homeDraftStorageKey);
+      saved = localStorage.getItem(storageKeys.draft);
       hasLocalBackup = saved !== null;
-      if (saved !== null) initial = parseHomeDocument(saved);
-      status.value = hasLocalBackup ? 'このブラウザーの下書きを復元しました' : '公開版から開始しました';
+      if (saved !== null) {
+        initial = parsePageDocument(saved, pageId);
+      }
+      status.value = hasLocalBackup ? 'このブラウザーの下書きを復元しました' : '初期デザインから開始しました';
     }
     catch {
       hasLocalBackup = true;
@@ -491,16 +563,16 @@ onMounted(async () => {
         protectedLocalDraft.value = saved;
         originalBackup.value = saved;
       }
-      error.value = '保存済みの下書きを読み込めませんでした。元のバックアップを保持し、公開版を表示しています。';
+      error.value = '保存済みの下書きを読み込めませんでした。元のバックアップを保持し、初期デザインを表示しています。';
     }
     try {
-      if (protectedLocalDraft.value === undefined) savedSync = localStorage.getItem(homeDraftSyncStorageKey);
-      originalBackup.value ??= localStorage.getItem(homeDraftRecoveryStorageKey) ?? undefined;
+      if (protectedLocalDraft.value === undefined) savedSync = localStorage.getItem(storageKeys.sync);
+      originalBackup.value ??= localStorage.getItem(storageKeys.recovery) ?? undefined;
     }
     catch { /* Optional recovery metadata must not prevent opening the editor. */ }
     applyDocument(initial);
     protectedLocalGeneration = draftState.value.generation;
-    draftState.value = restoreHomeDraftSyncState(draftState.value, savedSync);
+    draftState.value = restorePageDraftSyncState(draftState.value, savedSync);
     // Register the frame lifecycle handlers before an iframe can start loading.
     editor.render();
     ready.value = true;
@@ -527,8 +599,36 @@ onBeforeUnmount(() => {
         <p class="text-xs font-bold text-primary-700">
           CLASTERIA / DESIGN
         </p>
+        <label
+          for="editor-page"
+          class="sr-only"
+        >編集するページ</label>
+        <select
+          id="editor-page"
+          class="editor-input my-2"
+          :value="pageId"
+          :disabled="!ready || !!serverBusy"
+          @change="requestPageSwitch(($event.target as HTMLSelectElement).value)"
+        >
+          <option
+            v-for="item in pageDefinitions"
+            :key="item.id"
+            :value="item.id"
+          >
+            {{ item.label }} · {{ item.published ? '公開済み' : '非公開' }}
+          </option>
+        </select>
+        <p
+          class="text-xs font-bold"
+          :class="pageDefinition.published ? 'text-primary-700' : 'text-amber-800'"
+        >
+          {{ pageDefinition.published ? '公開済みページの下書き' : '非公開ページ · 保存しても公開されません' }}
+        </p>
+        <p class="mt-1 text-xs text-neutral-600">
+          {{ pageDefinition.description }}
+        </p>
         <h1 class="text-xl font-black">
-          Home を編集
+          {{ pageDefinition.label }} を編集
         </h1>
         <div class="mt-1 flex flex-wrap items-center gap-3 text-xs">
           <span
@@ -588,6 +688,15 @@ onBeforeUnmount(() => {
           下書き書き出し
         </UButton>
         <UButton
+          v-if="pageId === 'article-draft'"
+          color="neutral"
+          variant="outline"
+          :disabled="!ready"
+          @click="downloadArticle"
+        >
+          記事を Markdown で書き出す
+        </UButton>
+        <UButton
           color="neutral"
           variant="outline"
           :disabled="!ready || !!serverBusy || !!pendingServerLoad"
@@ -612,11 +721,11 @@ onBeforeUnmount(() => {
           プレビュー
         </UButton>
         <UButton
-          to="/"
+          :to="pageDefinition.published ? pageDefinition.path : '/'"
           color="neutral"
           variant="ghost"
         >
-          公開版に戻る
+          {{ pageDefinition.published ? '公開版に戻る' : '公開サイトへ' }}
         </UButton>
       </div>
       <input
@@ -628,6 +737,38 @@ onBeforeUnmount(() => {
         @change="importDraft"
       >
     </header>
+    <section
+      v-if="pendingPageSwitch"
+      class="border-b border-amber-300 bg-amber-50 p-4 text-sm"
+      role="alertdialog"
+      aria-label="ページを切り替える前の確認"
+    >
+      <p>このページにはサーバーに未保存の内容があります。ブラウザーに保管して切り替えますか？サーバー保存は各ページで行ってください。</p>
+      <div class="mt-3 flex gap-2">
+        <UButton
+          size="sm"
+          @click="switchPage(pendingPageSwitch)"
+        >
+          ブラウザーに保管して切り替え
+        </UButton>
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="outline"
+          @click="downloadDraft"
+        >
+          下書き書き出し
+        </UButton>
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="ghost"
+          @click="pendingPageSwitch = undefined"
+        >
+          キャンセル
+        </UButton>
+      </div>
+    </section>
     <div
       v-if="noticeVisible"
       id="editor-save-notice"
@@ -797,15 +938,15 @@ onBeforeUnmount(() => {
         />
         <div class="my-3 flex flex-wrap gap-2">
           <UButton
-            v-for="kind in (['about', 'news', 'contact'] as const)"
+            v-for="kind in availableKinds"
             :key="kind"
             color="neutral"
             variant="outline"
             size="xs"
-            :disabled="!ready || sectionList.length >= maxHomeSections"
+            :disabled="!ready || sectionList.length >= maxPageSections"
             @click="addSection(kind)"
           >
-            ＋ {{ homeSectionLabels[kind] }}
+            ＋ {{ pageSectionLabels[kind] }}
           </UButton>
         </div>
         <h2 class="mt-6 font-black">
@@ -831,7 +972,7 @@ onBeforeUnmount(() => {
               :class="selected?.id === section.id ? 'bg-primary-50 font-bold text-primary-800' : ''"
               @click="selectSection(section.id)"
             >
-              {{ index + 1 }}. {{ homeSectionLabels[section.kind] }}
+              {{ index + 1 }}. {{ pageSectionLabels[section.kind] }}
             </button>
           </li>
         </ol>
@@ -840,7 +981,7 @@ onBeforeUnmount(() => {
             使い方・公開までの流れ
           </summary>
           <p class="mt-3">
-            セクションを選択し、右側で文章・画像・色・余白を変更します。ニュース本文は公開済みの記事から表示します。
+            セクションを選択し、右側で文章・画像・色・余白を変更します。ニュース一覧は公開済みの記事を表示します。「新規記事の下書き」は本文を別に準備する画面です。
           </p>
           <p class="mt-3">
             サーバーへの保管は「下書きを保存」を使ってください。プレビューで PC・スマートフォン表示も確認してください。公開には、書き出した JSON をブランチへ取り込み、確認・デプロイする作業が必要です。
@@ -865,7 +1006,7 @@ onBeforeUnmount(() => {
           :disabled="!ready"
           @click="() => { resetOpen = true; }"
         >
-          公開版にリセット
+          初期デザインにリセット
         </UButton>
         <div
           v-if="resetOpen"
@@ -873,7 +1014,7 @@ onBeforeUnmount(() => {
           role="alertdialog"
           aria-label="下書きをリセット"
         >
-          <p>このブラウザーの下書きを公開版に戻します。必要な変更は先に書き出してください。</p>
+          <p>このブラウザーの下書きを初期デザインに戻します。必要な変更は先に書き出してください。</p>
           <div class="mt-3 flex gap-2">
             <UButton
               size="xs"
@@ -934,7 +1075,7 @@ onBeforeUnmount(() => {
       >
         <template v-if="selected">
           <h2 class="font-black">
-            {{ homeSectionLabels[selected.kind] }}
+            {{ pageSectionLabels[selected.kind] }}
           </h2>
           <div class="my-4 flex flex-wrap gap-2">
             <UButton
@@ -959,7 +1100,7 @@ onBeforeUnmount(() => {
               size="xs"
               color="neutral"
               variant="outline"
-              :disabled="selected.kind === 'hero' || sectionList.length >= maxHomeSections"
+              :disabled="isRequiredPageSection(selected.kind) || sectionList.length >= maxPageSections"
               @click="duplicateSection"
             >
               複製
@@ -968,7 +1109,7 @@ onBeforeUnmount(() => {
               size="xs"
               color="error"
               variant="ghost"
-              :disabled="selected.kind === 'hero'"
+              :disabled="protectedSection(selected)"
               @click="removeSection"
             >
               削除
@@ -982,16 +1123,17 @@ onBeforeUnmount(() => {
             <label
               :for="`editor-field-${key}`"
               class="mb-1 block text-xs font-bold"
-            >{{ homeFieldLabels[key] }}</label>
+            >{{ pageFieldLabels[key] ?? key }}</label>
             <select
-              v-if="key === 'image' || key.endsWith('To')"
+              v-if="key === 'image' || key.endsWith('To') || key.endsWith('Icon')"
               :id="`editor-field-${key}`"
               class="editor-input"
               :value="value"
+              :disabled="fixedField(key)"
               @change="changeField(key, ($event.target as HTMLSelectElement).value)"
             >
               <option
-                v-for="option in key === 'image' ? homeImages : destinations"
+                v-for="option in fieldOptions(key)"
                 :key="option.value"
                 :value="option.value"
               >
@@ -1005,6 +1147,7 @@ onBeforeUnmount(() => {
               :rows="['description', 'cardBody', 'title'].includes(key) ? 3 : 2"
               :value="value"
               maxlength="2000"
+              :readonly="fixedField(key)"
               @input="changeField(key, ($event.target as HTMLTextAreaElement).value)"
             />
           </div>

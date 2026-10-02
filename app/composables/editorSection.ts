@@ -1,10 +1,10 @@
 import { h, Suspense } from 'vue';
 import type { AppContext, Component } from 'vue';
-import type { HomeSection } from '~/utils/homeDocument';
+import type { PageSection, PageId } from '~/utils/pageDocument';
 
 /** Give the rendered component, not the non-component Suspense boundary, Nuxt's context. */
-export function createEditorSectionVNode(view: Component, section: HomeSection, appContext: AppContext) {
-  const content = h(view, { section, aboutId: 'about' });
+export function createEditorSectionVNode(view: Component, section: PageSection, appContext: AppContext, page?: PageId) {
+  const content = h(view, { section, page, aboutId: 'about' });
   content.appContext = appContext;
   return h(Suspense, {}, {
     default: () => content,

@@ -6,8 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'vue/compiler-sfc';
 import * as documents from '../../utils/homeDocument';
 import * as drafts from '../../utils/homeDraftClient';
-import type { HomeDocument, HomeSection } from '../../utils/homeDocument';
-import type { HomeDraftClientState, HomeDraftRequestError, ServerHomeDraft } from '../../utils/homeDraftClient';
+import * as pageDocuments from '../../utils/pageDocument';
+import * as pageDrafts from '../../utils/pageDraftClient';
+import type { PageDocument as HomeDocument, PageSection as HomeSection, PageId } from '../../utils/pageDocument';
+import type { PageDraftClientState as HomeDraftClientState, PageDraftRequestError as HomeDraftRequestError, ServerPageDraft as ServerHomeDraft } from '../../utils/pageDraftClient';
 
 type Ref<T> = { value: T };
 type EditorApi = {
@@ -32,9 +34,14 @@ type EditorApi = {
   importDraft: (event: Event) => Promise<void>;
   documentFromEditor: () => HomeDocument;
   downloadOriginalBackup: () => void;
+  requestPageSwitch: (page: string) => void;
+  switchPage: (page: PageId) => void;
+  pendingPageSwitch: Ref<PageId | undefined>;
+  preview: () => void;
 };
 
 type Request = {
+  url: string;
   options: RequestInit;
   resolve: (response: Response) => void;
   reject: (error: Error) => void;
@@ -47,6 +54,7 @@ const executable = ts.transpileModule(`${script}\nexport const api = {
   noticeVisible, dismissNotice, showNotice,
   saveServerDraft, checkServerDraft, confirmServerLoad, cancelServerLoad,
   changeField, resetDraft, importDraft, documentFromEditor, downloadOriginalBackup,
+  requestPageSwitch, switchPage, pendingPageSwitch, preview,
 };`, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 
 type TemplateElement = { element: ElementNode; ancestors: ElementNode[] };
@@ -74,19 +82,26 @@ async function flush() {
 async function mountEditor(
   local?: HomeDocument,
   baseline?: ServerHomeDraft,
-  recovery: { rawLocal?: string; existing?: string; failWrite?: boolean; storage?: ReadonlyMap<string, string> } = {},
+  recovery: {
+    rawLocal?: string; existing?: string; failWrite?: boolean; storage?: ReadonlyMap<string, string>; page?: PageId;
+  } = {},
 ) {
   const storage = new Map(recovery.storage);
+  const pageId = recovery.page ?? local?.page ?? 'home';
+  const keys = pageDrafts.pageStorageKeys(pageId);
+  const navigations: string[] = [];
+  const session = new Map<string, string>();
+  let routeUpdate: ((to: { query: { page: string } }) => unknown) | undefined;
   if (local) {
-    storage.set(documents.homeDraftStorageKey, documents.serializeHomeDocument(local));
+    storage.set(keys.draft, pageDocuments.serializePageDocument(local));
     if (baseline) {
-      storage.set(drafts.homeDraftSyncStorageKey, drafts.serializeHomeDraftSyncState({
-        ...drafts.createHomeDraftClientState(local), base: baseline,
+      storage.set(keys.sync, pageDrafts.serializePageDraftSyncState({
+        ...pageDrafts.createPageDraftClientState(local), base: baseline,
       }));
     }
   }
-  if (recovery.rawLocal !== undefined) storage.set(documents.homeDraftStorageKey, recovery.rawLocal);
-  if (recovery.existing !== undefined) storage.set(drafts.homeDraftRecoveryStorageKey, recovery.existing);
+  if (recovery.rawLocal !== undefined) storage.set(keys.draft, recovery.rawLocal);
+  if (recovery.existing !== undefined) storage.set(keys.recovery, recovery.existing);
   const callbacks = new Map<string, Array<() => void>>();
   const requests: Request[] = [];
   const downloads: Blob[] = [];
@@ -146,17 +161,20 @@ async function mountEditor(
   vi.stubGlobal('localStorage', {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => {
-      if (key === drafts.homeDraftRecoveryStorageKey && recovery.failWrite) throw new Error('Quota exceeded');
+      if (key === keys.recovery && recovery.failWrite) throw new Error('Quota exceeded');
       storage.set(key, value);
     },
   });
-  vi.stubGlobal('fetch', (_url: string, options: RequestInit) => new Promise<Response>((resolve, reject) => {
-    requests.push({ options, resolve, reject });
+  vi.stubGlobal('sessionStorage', { getItem: (key: string) => session.get(key) ?? null, setItem: (key: string, value: string) => session.set(key, value) });
+  vi.stubGlobal('fetch', (url: string, options: RequestInit) => new Promise<Response>((resolve, reject) => {
+    requests.push({ url, options, resolve, reject });
     options.signal?.addEventListener('abort', () => reject(new Error('Aborted')));
   }));
   const ref = <T>(value?: T) => ({ value });
   const noticeToggleFocus = vi.fn();
   const bindings = {
+    defineProps: () => ({ page: pageId }),
+    withDefaults: (props: object, defaults: object) => ({ ...defaults, ...props }),
     getCurrentInstance: () => ({ appContext: {} }),
     useTemplateRef: (name: string) => ref(name === 'noticeToggle' ? { focus: noticeToggleFocus } : {}),
     shallowRef: ref,
@@ -165,17 +183,22 @@ async function mountEditor(
     computed: <T>(get: () => T) => ({ get value() { return get(); } }),
     onMounted: (callback: () => Promise<void>) => { mounted = callback; },
     onBeforeUnmount: (callback: () => void) => { unmounted = callback; },
-    navigateTo: () => {},
+    navigateTo: (url: string) => { navigations.push(url); },
+    onBeforeRouteUpdate: (callback: typeof routeUpdate) => { routeUpdate = callback; },
+    onBeforeRouteLeave: () => {},
   };
   const modules: Record<string, unknown> = {
     'vue': { render: () => {} },
     'grapesjs': { default: { init: () => editor } },
     'grapesjs/dist/css/grapes.min.css': {},
     '~/utils/homeDocument': documents,
+    '~/utils/pageDocument': pageDocuments,
+    '~/utils/pageDraftClient': pageDrafts,
     '~/utils/homeDraftClient': drafts,
     '~/utils/editorCanvas': { configureHomeEditorCanvas: () => {} },
     '~/composables/editorSection': { createEditorSectionVNode: () => {} },
     '~/components/top/HomeSection.vue': {},
+    '~/components/editor/PageSection.vue': {},
   };
   const exported = {} as { api: EditorApi };
   // Exercise the component's actual script, with its editor and browser dependencies isolated.
@@ -191,7 +214,8 @@ async function mountEditor(
     await flush();
   };
   return {
-    api: exported.api, requests, storage, reply, downloads, noticeToggleFocus, editorRefresh,
+    api: exported.api, requests, storage, reply, downloads, noticeToggleFocus, editorRefresh, navigations, session,
+    navigateQuery: (page: string) => routeUpdate?.({ query: { page } }),
     pagehide: () => pageEvents.get('pagehide')?.(), unmount: () => unmounted(),
   };
 }
@@ -581,7 +605,7 @@ describe('Home editor server save/load orchestration', () => {
   it('keeps imported JSON dirty without borrowing an unacknowledged server revision', async () => {
     const editor = await mountEditor(draft('元のローカル編集').document);
     await editor.reply(draft('他の編集', 7));
-    const file = { size: 100, text: async () => documents.serializeHomeDocument(draft('JSON の編集').document) };
+    const file = { size: 100, text: async () => pageDocuments.serializePageDocument(draft('JSON の編集').document) };
     await editor.api.importDraft({ target: { files: [file], value: 'draft.json' } } as unknown as Event);
     expect(editor.api.documentFromEditor()).toEqual(draft('JSON の編集').document);
     expect(editor.api.draftState.value.base).toBeNull();
@@ -693,6 +717,118 @@ describe('unreadable local backup preservation', () => {
     expect(editor.storage.get(drafts.homeDraftRecoveryStorageKey)).toBe('{original');
     expect(documents.parseHomeDocument(editor.storage.get(documents.homeDraftStorageKey)!))
       .toEqual(documents.createDefaultHomeDocument());
+    editor.unmount();
+  });
+});
+
+describe('multi-page editing controls', () => {
+  it.each(['support', 'articles', 'onigokko', 'kakurenbo', 'login', 'register', 'leaderboard', 'codingcraft', 'article-draft'] as const)(
+    'opens, edits, saves, restores and previews %s in its own namespace', async (page) => {
+      const editor = await mountEditor(undefined, undefined, { page });
+      expect(editor.requests[0]!.url).toBe(`/api/editor/${page}`);
+      await editor.reply(null);
+      editor.api.changeField('title', `${page} の編集`);
+      await vi.advanceTimersByTimeAsync(350);
+      const keys = pageDrafts.pageStorageKeys(page);
+      expect(pageDocuments.parsePageDocument(editor.storage.get(keys.draft)!).page).toBe(page);
+      expect(editor.storage.has(documents.homeDraftStorageKey)).toBe(false);
+      const save = editor.api.saveServerDraft();
+      const submitted = JSON.parse(String(editor.requests.at(-1)!.options.body));
+      expect(submitted.document.page).toBe(page);
+      await editor.reply({ document: submitted.document, revision: 1, updatedAt: '2026-10-02T19:00:00Z' });
+      await save;
+      expect(editor.api.serverDirty.value).toBe(false);
+      editor.api.preview();
+      expect(editor.navigations).toEqual([`/editor/preview?page=${page}`]);
+      expect(pageDocuments.parsePageDocument(editor.session.get(keys.preview)!).sections[0]!.content.title).toBe(`${page} の編集`);
+      editor.unmount();
+      const restored = await mountEditor(undefined, undefined, { page, storage: editor.storage });
+      expect(restored.api.documentFromEditor().sections[0]!.content.title).toBe(`${page} の編集`);
+      expect(restored.api.draftState.value.base?.revision).toBe(1);
+      restored.unmount();
+    },
+  );
+
+  it('confirms unsaved page switching and preserves the current page on cancel', async () => {
+    const editor = await mountEditor();
+    await editor.reply(null);
+    editor.api.changeField('title', 'Home の未保存文章');
+    editor.api.requestPageSwitch('support');
+    expect(editor.api.pendingPageSwitch.value).toBe('support');
+    expect(editor.navigations).toEqual([]);
+    editor.api.pendingPageSwitch.value = undefined;
+    expect(editor.api.documentFromEditor().sections[0]!.content.title).toBe('Home の未保存文章');
+    editor.api.requestPageSwitch('support');
+    editor.api.switchPage('support');
+    expect(editor.navigations).toEqual(['/editor?page=support']);
+    expect(editor.storage.get(documents.homeDraftStorageKey)).toContain('Home の未保存文章');
+    editor.unmount();
+  });
+
+  it('guards browser query navigation and blocks switching while a save is pending', async () => {
+    const editor = await mountEditor();
+    await editor.reply(null);
+    expect(editor.navigateQuery('support')).toBe(false);
+    expect(editor.api.pendingPageSwitch.value).toBe('support');
+    editor.api.pendingPageSwitch.value = undefined;
+    const save = editor.api.saveServerDraft();
+    editor.api.requestPageSwitch('support');
+    editor.api.switchPage('support');
+    expect(editor.api.pendingPageSwitch.value).toBeUndefined();
+    expect(editor.navigations).toEqual([]);
+    await editor.reply(draft());
+    await save;
+    editor.unmount();
+  });
+
+  it('rejects another page’s import and server response without changing the editor', async () => {
+    const editor = await mountEditor();
+    await editor.reply(null);
+    const original = editor.api.documentFromEditor();
+    const other = pageDocuments.createDefaultPageDocument('support');
+    const file = { size: 100, text: async () => pageDocuments.serializePageDocument(other) };
+    await editor.api.importDraft({ target: { files: [file], value: 'draft.json' } } as unknown as Event);
+    expect(editor.api.error.value).toContain('別のページ');
+    expect(editor.api.documentFromEditor()).toEqual(original);
+    const load = editor.api.checkServerDraft(true);
+    await editor.reply({ document: other, revision: 1, updatedAt: '2026-10-02T19:00:00Z' });
+    await load;
+    expect(editor.api.serverError.value?.code).toBe('invalid_response');
+    expect(editor.api.documentFromEditor()).toEqual(original);
+    editor.unmount();
+  });
+
+  it('clears a local validation error once a partly typed article identifier becomes valid', async () => {
+    const editor = await mountEditor(undefined, undefined, { page: 'article-draft' });
+    await editor.reply(null);
+    editor.api.changeField('slug', '2026');
+    await vi.advanceTimersByTimeAsync(350);
+    expect(editor.api.error.value).toContain('記事の識別子');
+    editor.api.changeField('slug', '20261002-example');
+    await vi.advanceTimersByTimeAsync(350);
+    expect(editor.api.error.value).toBe('');
+    expect(editor.storage.get(pageDrafts.pageStorageKeys('article-draft').draft)).toContain('20261002-example');
+    editor.unmount();
+  });
+
+  it('preserves cross-page local data but renders the selected page default', async () => {
+    const rawLocal = pageDocuments.serializePageDocument(pageDocuments.createDefaultPageDocument('home'));
+    const editor = await mountEditor(undefined, undefined, { page: 'support', rawLocal });
+    expect(editor.api.documentFromEditor()).toEqual(pageDocuments.createDefaultPageDocument('support'));
+    expect(editor.api.originalBackup.value).toBe(rawLocal);
+    expect(editor.storage.get(pageDrafts.pageStorageKeys('support').draft)).toBe(rawLocal);
+    editor.unmount();
+  });
+
+  it('does not switch away when a damaged backup cannot be safely preserved', async () => {
+    const editor = await mountEditor(undefined, undefined, { page: 'support', rawLocal: '{broken', existing: '{older' });
+    await editor.reply(null);
+    editor.api.changeField('title', '新しいお問い合わせ');
+    editor.api.requestPageSwitch('home');
+    editor.api.switchPage('home');
+    expect(editor.navigations).toEqual([]);
+    expect(editor.storage.get(pageDrafts.pageStorageKeys('support').draft)).toBe('{broken');
+    expect(editor.api.error.value).toContain('元のバックアップ');
     editor.unmount();
   });
 });

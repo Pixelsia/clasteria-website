@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDefaultHomeDocument } from '../../app/utils/homeDocument';
-import { handleDraftRequest } from './drafts';
+import { createDefaultHomeDocument, serializeHomeDocument } from '../../app/utils/homeDocument';
+import { createDefaultPageDocument, pageDefinitions } from '../../app/utils/pageDocument';
+import type { PageId } from '../../app/utils/pageDocument';
+import { handleDraftRequest, multiPageDraftsSchemaSql } from './drafts';
 import type { DraftEnvironment } from './drafts';
 
 const identity = vi.hoisted(() => ({ owner: 'verified-owner' as string | null }));
@@ -14,34 +16,49 @@ let db: InstanceType<typeof Database>;
 let env: DraftEnvironment;
 const origin = 'https://preview.pages.dev';
 const scope = 'codex/preview';
-function request(method = 'GET', body?: unknown, headers: Record<string, string> = {}) {
-  return new Request(`${origin}/api/editor/home`, {
+const originalMigration = readFileSync(new URL('../../migrations/0001_editor_drafts.sql', import.meta.url), 'utf8');
+const multiPageMigration = readFileSync(new URL('../../migrations/0002_multi_page_editor_drafts.sql', import.meta.url), 'utf8');
+function request(method = 'GET', body?: unknown, headers: Record<string, string> = {}, page = 'home') {
+  return new Request(`${origin}/api/editor/${page}`, {
     method, headers: { 'Origin': origin, 'Content-Type': 'application/json', ...headers },
     ...(body === undefined ? {} : { body: typeof body === 'string' ? body : JSON.stringify(body) }),
   });
 }
-function put(baseRevision = 0) {
-  return request('PUT', { document: createDefaultHomeDocument(), baseRevision });
+function put(baseRevision = 0, page: PageId = 'home') {
+  return request('PUT', { document: createDefaultPageDocument(page), baseRevision }, {}, page);
+}
+function applyMultiPageMigration() {
+  // The additive migration is a single statement, also safe in the D1 console.
+  db.exec(multiPageMigration);
 }
 
 beforeEach(() => {
   identity.owner = 'verified-owner';
   db = new Database(':memory:');
-  db.exec(readFileSync(new URL('../../migrations/0001_editor_drafts.sql', import.meta.url), 'utf8'));
+  db.exec(originalMigration);
+  applyMultiPageMigration();
   env = { CLASTERIA_ACCESS_AUD: 'app', CLASTERIA_DRAFTS: {
     prepare(sql) {
       return { bind(...values) {
         return {
           bind() { throw new Error('already bound'); },
           async first<T>() { return (db.prepare(sql).get(...values) ?? null) as T | null; },
+          async run() { return db.prepare(sql).run(...values); },
         };
-      }, async first() { throw new Error('not bound'); } };
+      },
+      async first<T>() { return (db.prepare(sql).get() ?? null) as T | null; },
+      async run() { return db.prepare(sql).run(); } };
     },
   } };
 });
 afterEach(() => db.close());
 
 describe('server draft API with real SQLite conditional writes', () => {
+  it('exposes only the fixed editor page registry', () => {
+    expect(pageDefinitions.map(({ id }) => id).sort()).toEqual([
+      'home', 'support', 'articles', 'onigokko', 'kakurenbo', 'login', 'register', 'leaderboard', 'codingcraft', 'article-draft',
+    ].sort());
+  });
   it('saves and loads a validated document across independent requests with increasing revision', async () => {
     expect(await (await handleDraftRequest(request(), env, scope)).json()).toEqual({ draft: null });
     const first = await handleDraftRequest(put(), env, scope);
@@ -65,12 +82,90 @@ describe('server draft API with real SQLite conditional writes', () => {
     identity.owner = 'other-owner';
     expect(await (await handleDraftRequest(request(), env, scope)).json()).toEqual({ draft: null });
   });
-  it('fails closed before querying storage when setup or identity is missing', async () => {
-    expect((await handleDraftRequest(put(), {}, scope)).status).toBe(503);
-    expect((await handleDraftRequest(put(), env, 'main')).status).toBe(503);
-    identity.owner = null;
-    expect((await handleDraftRequest(put(), env, scope)).status).toBe(401);
+  it('isolates every registered page and keeps revisions independent', async () => {
+    for (const { id } of pageDefinitions) {
+      expect(await (await handleDraftRequest(request('GET', undefined, {}, id), env, scope)).json()).toEqual({ draft: null });
+      const saved = await handleDraftRequest(put(0, id), env, scope);
+      expect(saved.status).toBe(200);
+      expect((await saved.json()).draft).toMatchObject({ document: createDefaultPageDocument(id), revision: 1 });
+    }
+    for (const { id } of pageDefinitions) {
+      const read = await handleDraftRequest(request('GET', undefined, {}, id), env, scope);
+      expect((await read.json()).draft).toMatchObject({ document: createDefaultPageDocument(id), revision: 1 });
+      const responses = await Promise.all([
+        handleDraftRequest(put(1, id), env, scope), handleDraftRequest(put(1, id), env, scope),
+      ]);
+      expect(responses.map(response => response.status).sort()).toEqual([200, 409]);
+      expect((await handleDraftRequest(put(0, id), env, scope)).status).toBe(409);
+    }
+    expect(db.prepare('SELECT page, revision FROM editor_drafts UNION ALL SELECT page, revision FROM editor_page_drafts ORDER BY page').all()).toEqual(
+      pageDefinitions.map(({ id }) => ({ page: id, revision: 2 })).sort((a, b) => a.page.localeCompare(b.page)),
+    );
+  });
+  it.each(pageDefinitions.map(({ id }) => id))('isolates owners and branches when writing %s', async (page) => {
+    expect((await handleDraftRequest(put(0, page), env, scope)).status).toBe(200);
+    const get = () => request('GET', undefined, {}, page);
+    expect(await (await handleDraftRequest(get(), env, 'other-branch')).json()).toEqual({ draft: null });
+    expect((await handleDraftRequest(put(1, page), env, 'other-branch')).status).toBe(409);
+    expect((await handleDraftRequest(put(0, page), env, 'other-branch')).status).toBe(200);
+    identity.owner = 'other-owner';
+    expect(await (await handleDraftRequest(get(), env, scope)).json()).toEqual({ draft: null });
+    expect((await handleDraftRequest(put(1, page), env, scope)).status).toBe(409);
+    expect((await handleDraftRequest(put(0, page), env, scope)).status).toBe(200);
+    expect(db.prepare('SELECT scope, owner, page, revision FROM editor_drafts UNION ALL SELECT scope, owner, page, revision FROM editor_page_drafts ORDER BY scope, owner').all()).toEqual([
+      { scope, owner: 'other-owner', page, revision: 1 },
+      { scope, owner: 'verified-owner', page, revision: 1 },
+      { scope: 'other-branch', owner: 'verified-owner', page, revision: 1 },
+    ]);
+  });
+  it.each(pageDefinitions.map(({ id }) => id))('rejects a different document page at the %s endpoint', async (page) => {
+    const otherPage = page === 'home' ? 'support' : 'home';
+    const response = await handleDraftRequest(request('PUT', {
+      document: createDefaultPageDocument(otherPage), baseRevision: 0,
+    }, {}, page), env, scope);
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({ error: 'invalid_document' });
     expect(db.prepare('SELECT count(*) AS count FROM editor_drafts').get()).toEqual({ count: 0 });
+    expect(db.prepare('SELECT count(*) AS count FROM editor_page_drafts').get()).toEqual({ count: 0 });
+  });
+  it.each(pageDefinitions.map(({ id }) => id))('fails closed when a stored %s document belongs to another page', async (page) => {
+    expect((await handleDraftRequest(put(0, page), env, scope)).status).toBe(200);
+    const otherPage = page === 'home' ? 'support' : 'home';
+    const table = page === 'home' ? 'editor_drafts' : 'editor_page_drafts';
+    db.prepare(`UPDATE ${table} SET document = ? WHERE scope = ? AND owner = ? AND page = ?`)
+      .run(JSON.stringify(createDefaultPageDocument(otherPage)), scope, 'verified-owner', page);
+    const response = await handleDraftRequest(request('GET', undefined, {}, page), env, scope);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ error: 'unavailable' });
+  });
+  it.each([
+    '', 'unknown', 'Home', 'home/', 'home/extra', 'articles/some-slug', 'article-draft/some-slug',
+    '%68ome', 'ho%6de', '%2Fhome', 'home%2F', 'support%00', 'support%3Fhome', 'home;support',
+    '__proto__', 'constructor', 'toString', 'Ｈｏｍｅ', 'home%27%20OR%201%3D1--',
+  ])('rejects unregistered or encoded page paths: %s', async (path) => {
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    expect((await handleDraftRequest(request('GET', undefined, {}, path), env, scope)).status).toBe(404);
+    expect((await handleDraftRequest(request('PUT', { document: createDefaultHomeDocument(), baseRevision: 0 }, {}, path), env, scope)).status).toBe(404);
+    expect(prepare).not.toHaveBeenCalled();
+  });
+  it.each(['{', JSON.stringify({ version: 100, page: 'support', sections: [] }), serializeHomeDocument(createDefaultHomeDocument())])(
+    'does not return invalid or cross-page stored documents', async (document) => {
+      db.prepare('INSERT INTO editor_page_drafts VALUES (?, ?, ?, ?, ?, ?)').run(scope, 'verified-owner', 'support', document, 1, '2026-10-02T00:00:00.000Z');
+      const response = await handleDraftRequest(request('GET', undefined, {}, 'support'), env, scope);
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({ error: 'unavailable' });
+    },
+  );
+  it.each(pageDefinitions.map(({ id }) => id))('fails closed before querying %s storage when setup or identity is missing', async (page) => {
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    expect((await handleDraftRequest(put(0, page), {}, scope)).status).toBe(503);
+    expect((await handleDraftRequest(put(0, page), env, 'main')).status).toBe(503);
+    expect((await handleDraftRequest(put(0, page), env, '')).status).toBe(503);
+    identity.owner = null;
+    expect((await handleDraftRequest(put(0, page), env, scope)).status).toBe(401);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(db.prepare('SELECT count(*) AS count FROM editor_drafts').get()).toEqual({ count: 0 });
+    expect(db.prepare('SELECT count(*) AS count FROM editor_page_drafts').get()).toEqual({ count: 0 });
   });
   it('rejects cross-origin writes, unsupported methods and content types', async () => {
     expect((await handleDraftRequest(request('PUT', {}, { Origin: 'https://attacker.test' }), env, scope)).status).toBe(403);
@@ -96,5 +191,164 @@ describe('server draft API with real SQLite conditional writes', () => {
     const response = await handleDraftRequest(put(), env, scope);
     expect(response.status).toBe(503);
     expect(await response.text()).not.toMatch(/SQLITE|editor_drafts|INSERT/);
+  });
+  it('initializes storage on the first valid non-Home save while leaving Home unchanged', async () => {
+    db.exec('DROP TABLE editor_page_drafts');
+    expect((await handleDraftRequest(put(), env, scope)).status).toBe(200);
+    const before = db.prepare('SELECT * FROM editor_drafts').get();
+    const unread = await handleDraftRequest(request('GET', undefined, {}, 'support'), env, scope);
+    expect(await unread.json()).toEqual({ draft: null });
+    const response = await handleDraftRequest(put(0, 'support'), env, scope);
+    expect(response.status).toBe(200);
+    expect((await response.json()).draft).toMatchObject({ document: createDefaultPageDocument('support'), revision: 1 });
+    expect(db.prepare('SELECT * FROM editor_drafts').get()).toEqual(before);
+    expect((await handleDraftRequest(request('GET', undefined, {}, 'support'), env, scope)).status).toBe(200);
+    const home = await (await handleDraftRequest(request(), env, scope)).json();
+    expect(home.draft.document).toEqual(createDefaultHomeDocument());
+  });
+  it('preserves an existing Home revision 1 and maintains atomic revisions after migration', async () => {
+    db.exec('DROP TABLE editor_page_drafts');
+    const document = `\n${serializeHomeDocument(createDefaultHomeDocument())}\n`;
+    db.prepare('INSERT INTO editor_drafts VALUES (?, ?, ?, ?, ?, ?)').run(scope, 'verified-owner', 'home', document, 1, '2026-09-30T12:34:56.789Z');
+    const before = db.prepare('SELECT * FROM editor_drafts').get();
+    applyMultiPageMigration();
+    expect(db.prepare('SELECT * FROM editor_drafts').get()).toEqual(before);
+    expect((await (await handleDraftRequest(request(), env, scope)).json()).draft).toEqual({
+      document: createDefaultHomeDocument(), revision: 1, updatedAt: '2026-09-30T12:34:56.789Z',
+    });
+    expect((await handleDraftRequest(put(0), env, scope)).status).toBe(409);
+    const responses = await Promise.all([
+      handleDraftRequest(put(1), env, scope), handleDraftRequest(put(1), env, scope),
+    ]);
+    expect(responses.map(response => response.status).sort()).toEqual([200, 409]);
+    expect((await (await handleDraftRequest(request(), env, scope)).json()).draft.revision).toBe(2);
+    expect((await handleDraftRequest(put(0, 'support'), env, scope)).status).toBe(200);
+    expect((await (await handleDraftRequest(request(), env, scope)).json()).draft.revision).toBe(2);
+  });
+});
+
+describe('validated non-Home storage initialization', () => {
+  function tableExists() {
+    return Boolean(db.prepare('SELECT name FROM sqlite_master WHERE type = \'table\' AND name = \'editor_page_drafts\'').get());
+  }
+  function homeRows() {
+    return db.prepare('SELECT *, hex(CAST(document AS BLOB)) AS bytes FROM editor_drafts').all();
+  }
+  beforeEach(() => {
+    db.exec('DROP TABLE editor_page_drafts');
+    const document = `\n${serializeHomeDocument(createDefaultHomeDocument())}\n`;
+    db.prepare('INSERT INTO editor_drafts VALUES (?, ?, ?, ?, ?, ?)')
+      .run(scope, 'verified-owner', 'home', document, 1, '2026-09-30T12:34:56.789Z');
+  });
+  it('pins the runtime initializer to the exact optional migration SQL', () => {
+    expect(multiPageDraftsSchemaSql).toBe(multiPageMigration.replace(/--[^\n]*/g, '').trim());
+  });
+  it('keeps every GET read-only and returns no draft before initialization', async () => {
+    const before = homeRows();
+    const schema = db.prepare('SELECT * FROM sqlite_master ORDER BY name').all();
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    for (const { id } of pageDefinitions) {
+      const response = await handleDraftRequest(request('GET', undefined, {}, id), env, scope);
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      if (id === 'home') expect(result.draft.revision).toBe(1);
+      else expect(result).toEqual({ draft: null });
+    }
+    expect(prepare.mock.calls.every(([sql]) => sql.startsWith('SELECT '))).toBe(true);
+    expect(tableExists()).toBe(false);
+    expect(homeRows()).toEqual(before);
+    expect(db.prepare('SELECT * FROM sqlite_master ORDER BY name').all()).toEqual(schema);
+  });
+  it('does not initialize new-page storage during a valid Home save', async () => {
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    expect((await handleDraftRequest(put(1), env, scope)).status).toBe(200);
+    expect(tableExists()).toBe(false);
+    expect(prepare.mock.calls.some(([sql]) => sql.includes('editor_page_drafts'))).toBe(false);
+  });
+  it.each(['GET', 'PUT'])('rejects anonymous %s before any storage access', async (method) => {
+    identity.owner = null;
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    const req = method === 'GET' ? request('GET', undefined, {}, 'support') : put(0, 'support');
+    expect((await handleDraftRequest(req, env, scope)).status).toBe(401);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(tableExists()).toBe(false);
+  });
+  it.each(['GET', 'PUT'])('rejects production, missing scope, and missing configuration for %s without creating storage', async (method) => {
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    const req = () => method === 'GET' ? request('GET', undefined, {}, 'support') : put(0, 'support');
+    expect((await handleDraftRequest(req(), env, 'main')).status).toBe(503);
+    expect((await handleDraftRequest(req(), env, '')).status).toBe(503);
+    expect((await handleDraftRequest(req(), { ...env, CLASTERIA_ACCESS_AUD: '' }, scope)).status).toBe(503);
+    expect((await handleDraftRequest(req(), { CLASTERIA_ACCESS_AUD: 'app' }, scope)).status).toBe(503);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(tableExists()).toBe(false);
+  });
+  it.each([
+    { label: 'wrong origin', make: () => request('PUT', {}, { Origin: 'https://attacker.test' }, 'support'), status: 403 },
+    { label: 'cross-site fetch', make: () => request('PUT', {}, { 'Sec-Fetch-Site': 'cross-site' }, 'support'), status: 403 },
+    { label: 'missing origin', make: () => {
+      const req = put(0, 'support');
+      req.headers.delete('Origin');
+      return req;
+    }, status: 403 },
+    { label: 'wrong content type', make: () => request('PUT', {}, { 'Content-Type': 'text/plain' }, 'support'), status: 415 },
+    { label: 'malformed JSON', make: () => request('PUT', '{', {}, 'support'), status: 400 },
+    { label: 'missing body', make: () => request('PUT', undefined, {}, 'support'), status: 400 },
+    { label: 'invalid envelope', make: () => request('PUT', [], {}, 'support'), status: 400 },
+    { label: 'invalid document', make: () => request('PUT', { document: {}, baseRevision: 0 }, {}, 'support'), status: 422 },
+    { label: 'wrong document page', make: () => request('PUT', { document: createDefaultHomeDocument(), baseRevision: 0 }, {}, 'support'), status: 422 },
+    { label: 'oversized streamed body', make: () => request('PUT', 'x'.repeat(102_000), {}, 'support'), status: 413 },
+    { label: 'oversized declared body', make: () => request('PUT', {}, { 'Content-Length': '102000' }, 'support'), status: 413 },
+    { label: 'unknown page', make: () => request('PUT', {}, {}, 'anything'), status: 404 },
+    { label: 'encoded page', make: () => request('PUT', {}, {}, '%73upport'), status: 404 },
+    { label: 'unsupported method', make: () => request('POST', {}, {}, 'support'), status: 405 },
+  ])('does not initialize storage for $label', async ({ make, status }) => {
+    const before = homeRows();
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    expect((await handleDraftRequest(make(), env, scope)).status).toBe(status);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(tableExists()).toBe(false);
+    expect(homeRows()).toEqual(before);
+  });
+  it.each([-1, 1.5, null, Number.MAX_SAFE_INTEGER + 1, '0'])('rejects invalid base revision %s before initialization', async (baseRevision) => {
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    const req = request('PUT', { document: createDefaultPageDocument('support'), baseRevision }, {}, 'support');
+    expect((await handleDraftRequest(req, env, scope)).status).toBe(400);
+    expect(prepare).not.toHaveBeenCalled();
+    expect(tableExists()).toBe(false);
+  });
+  it('initializes safely under concurrent first saves and keeps Home bytes and revision intact', async () => {
+    const before = homeRows();
+    const responses = await Promise.all([
+      handleDraftRequest(put(0, 'support'), env, scope),
+      handleDraftRequest(put(0, 'support'), env, scope),
+      handleDraftRequest(put(0, 'articles'), env, scope),
+    ]);
+    expect(responses.map(response => response.status)).toEqual([200, 409, 200]);
+    expect(homeRows()).toEqual(before);
+    expect(db.prepare('SELECT page, revision FROM editor_page_drafts ORDER BY page').all()).toEqual([
+      { page: 'articles', revision: 1 }, { page: 'support', revision: 1 },
+    ]);
+  });
+  it('preserves existing new-page rows when later valid saves repeat initialization', async () => {
+    expect((await handleDraftRequest(put(0, 'support'), env, scope)).status).toBe(200);
+    const before = db.prepare('SELECT * FROM editor_page_drafts WHERE page = ?').get('support');
+    expect((await handleDraftRequest(put(0, 'articles'), env, scope)).status).toBe(200);
+    expect(db.prepare('SELECT * FROM editor_page_drafts WHERE page = ?').get('support')).toEqual(before);
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    expect((await handleDraftRequest(request('GET', undefined, {}, 'support'), env, scope)).status).toBe(200);
+    expect(prepare.mock.calls.every(([sql]) => sql.startsWith('SELECT '))).toBe(true);
+  });
+  it('fails safely if CREATE fails and can retry without changing Home', async () => {
+    const before = homeRows();
+    db.exec('CREATE INDEX editor_page_drafts ON editor_drafts (updated_at)');
+    const response = await handleDraftRequest(put(0, 'support'), env, scope);
+    expect(response.status).toBe(503);
+    expect(await response.text()).not.toMatch(/SQLITE|CREATE|editor_page_drafts/);
+    expect(tableExists()).toBe(false);
+    expect(homeRows()).toEqual(before);
+    db.exec('DROP INDEX editor_page_drafts');
+    expect((await handleDraftRequest(put(0, 'support'), env, scope)).status).toBe(200);
+    expect(homeRows()).toEqual(before);
   });
 });

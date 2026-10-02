@@ -1,10 +1,29 @@
-import { maxHomeDocumentBytes, parseHomeDocument, serializeHomeDocument } from '../../app/utils/homeDocument';
+import { isPageId, maxPageDocumentBytes, parsePageDocument, serializePageDocument, validatePageDocument } from '../../app/utils/pageDocument';
+import type { PageId } from '../../app/utils/pageDocument';
 import { accessConfiguration, verifyEditorIdentity } from './access';
 import type { AccessConfig } from './access';
 
-type Statement = { bind: (...values: (string | number)[]) => Statement; first: <T>() => Promise<T | null> };
+type Statement = {
+  bind: (...values: (string | number)[]) => Statement;
+  first: <T>() => Promise<T | null>;
+  run: () => Promise<unknown>;
+};
 export type DraftEnvironment = AccessConfig & { CLASTERIA_DRAFTS?: { prepare: (sql: string) => Statement } };
 type DraftRow = { document: string; revision: number; updated_at: string };
+
+// Fixed additive schema only. A drift test pins this to migration 0002; no request data enters this SQL.
+export const multiPageDraftsSchemaSql = `CREATE TABLE IF NOT EXISTS editor_page_drafts (
+  scope TEXT NOT NULL,
+  owner TEXT NOT NULL,
+  page TEXT NOT NULL CHECK (page IN (
+    'support', 'articles', 'onigokko', 'kakurenbo',
+    'login', 'register', 'leaderboard', 'codingcraft', 'article-draft'
+  )),
+  document TEXT NOT NULL CHECK (length(CAST(document AS BLOB)) <= 100000),
+  revision INTEGER NOT NULL CHECK (revision >= 1),
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (scope, owner, page)
+);`;
 
 class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
@@ -14,13 +33,16 @@ function json(body: unknown, status = 200) {
     'Cache-Control': 'no-store, private', 'X-Content-Type-Options': 'nosniff', 'Vary': 'Cookie, Cf-Access-Jwt-Assertion',
   } });
 }
-function envelope(row: DraftRow | null) {
-  const draft = row && { document: parseHomeDocument(row.document), revision: row.revision, updatedAt: row.updated_at };
+function envelope(row: DraftRow | null, page: PageId) {
+  // Treat invalid or cross-page stored data as unavailable instead of returning it.
+  const draft = row && {
+    document: parsePageDocument(row.document, page), revision: row.revision, updatedAt: row.updated_at,
+  };
   return { draft };
 }
 async function readBody(request: Request) {
   // Limit streamed bytes as well as Content-Length; never buffer an unbounded request.
-  const limit = maxHomeDocumentBytes + 1024;
+  const limit = maxPageDocumentBytes + 1024;
   if (Number(request.headers.get('Content-Length')) > limit) throw new ApiError(413, 'too_large', '下書きは 100 KB 以下にしてください。');
   const reader = request.body?.getReader();
   if (!reader) throw new ApiError(400, 'invalid_request', '下書きがありません。');
@@ -53,7 +75,10 @@ async function readBody(request: Request) {
 
 export async function handleDraftRequest(request: Request, env: DraftEnvironment, scope: string): Promise<Response> {
   try {
-    if (new URL(request.url).pathname !== '/api/editor/home') return json({ error: 'not_found', message: '見つかりません。' }, 404);
+    const path = new URL(request.url).pathname;
+    const page = path.startsWith('/api/editor/') ? path.slice('/api/editor/'.length) : undefined;
+    // Do not decode paths or accept nested/trailing segments: only exact registered IDs.
+    if (!isPageId(page)) return json({ error: 'not_found', message: '見つかりません。' }, 404);
     if (!['GET', 'PUT'].includes(request.method)) return json({ error: 'method_not_allowed', message: '未対応の操作です。' }, 405);
     const config = accessConfiguration(env);
     if (!config || !env.CLASTERIA_DRAFTS || !scope || scope === 'main') {
@@ -63,10 +88,18 @@ export async function handleDraftRequest(request: Request, env: DraftEnvironment
     if (!owner) throw new ApiError(401, 'unauthorized', '認証を確認できません。許可されたアカウントで再ログインしてください。');
     // Bind the document to this build's branch and verified identity. Neither is client supplied.
     const db = env.CLASTERIA_DRAFTS;
+    // Only these server-selected literals reach SQL. Keep legacy Home storage unchanged.
+    const table = page === 'home' ? 'editor_drafts' : 'editor_page_drafts';
     if (request.method === 'GET') {
-      const row = await db.prepare('SELECT document, revision, updated_at FROM editor_drafts WHERE scope = ? AND owner = ? AND page = ?')
-        .bind(scope, owner, 'home').first<DraftRow>();
-      return json(envelope(row));
+      if (page !== 'home') {
+        // Reads never initialize storage. An absent new table means no non-Home drafts yet.
+        const exists = await db.prepare('SELECT name FROM sqlite_master WHERE type = \'table\' AND name = \'editor_page_drafts\'')
+          .first<{ name: string }>();
+        if (!exists) return json({ draft: null });
+      }
+      const row = await db.prepare(`SELECT document, revision, updated_at FROM ${table} WHERE scope = ? AND owner = ? AND page = ?`)
+        .bind(scope, owner, page).first<DraftRow>();
+      return json(envelope(row, page));
     }
     if (request.headers.get('Origin') !== new URL(request.url).origin
       || request.headers.get('Sec-Fetch-Site') === 'cross-site') {
@@ -83,21 +116,24 @@ export async function handleDraftRequest(request: Request, env: DraftEnvironment
     }
     let document: string;
     try {
-      document = serializeHomeDocument(body.document as Parameters<typeof serializeHomeDocument>[0]);
+      document = serializePageDocument(validatePageDocument(body.document, page));
     }
     catch { throw new ApiError(422, 'invalid_document', '下書きの内容またはバージョンが正しくありません。'); }
+    // Only a fully authenticated, preview-scoped, same-origin, validated non-Home save may create this table.
+    // IF NOT EXISTS is safe when independent first saves race; Home schema and data are never touched.
+    if (page !== 'home') await db.prepare(multiPageDraftsSchemaSql).run();
     const baseRevision = body.baseRevision as number;
     const timestamp = new Date().toISOString();
     // A single conditional write is the revision check. A read-then-write or KV put would lose concurrent edits.
     const row = baseRevision === 0
-      ? await db.prepare(`INSERT INTO editor_drafts (scope, owner, page, document, revision, updated_at)
+      ? await db.prepare(`INSERT INTO ${table} (scope, owner, page, document, revision, updated_at)
           VALUES (?, ?, ?, ?, 1, ?) ON CONFLICT (scope, owner, page) DO NOTHING
-          RETURNING document, revision, updated_at`).bind(scope, owner, 'home', document, timestamp).first<DraftRow>()
-      : await db.prepare(`UPDATE editor_drafts SET document = ?, revision = revision + 1, updated_at = ?
+          RETURNING document, revision, updated_at`).bind(scope, owner, page, document, timestamp).first<DraftRow>()
+      : await db.prepare(`UPDATE ${table} SET document = ?, revision = revision + 1, updated_at = ?
           WHERE scope = ? AND owner = ? AND page = ? AND revision = ?
-          RETURNING document, revision, updated_at`).bind(document, timestamp, scope, owner, 'home', baseRevision).first<DraftRow>();
+          RETURNING document, revision, updated_at`).bind(document, timestamp, scope, owner, page, baseRevision).first<DraftRow>();
     if (!row) throw new ApiError(409, 'revision_conflict', '別の端末で下書きが更新されました。現在の内容を書き出してから、サーバーの下書きを読み込んでください。');
-    return json(envelope(row));
+    return json(envelope(row, page));
   }
   catch (cause) {
     if (cause instanceof ApiError) return json({ error: cause.code, message: cause.message }, cause.status);

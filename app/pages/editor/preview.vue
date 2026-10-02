@@ -1,14 +1,20 @@
 <script setup lang="ts">
-import { createDefaultHomeDocument, homePreviewStorageKey, parseHomeDocument } from '~/utils/homeDocument';
-const document = ref(createDefaultHomeDocument());
+import { createDefaultPageDocument, isPageId, pageDefinitions, parsePageDocument } from '~/utils/pageDocument';
+import { pageStorageKeys } from '~/utils/pageDraftClient';
+const route = useRoute();
+const page = isPageId(route.query.page) ? route.query.page : 'home';
+const definition = pageDefinitions.find(item => item.id === page)!;
+const previewLabel = definition.published ? '下書きプレビュー' : '非公開ページのプレビュー';
+const document = ref(createDefaultPageDocument(page));
 const ready = ref(false);
 const error = ref('');
-useSeoMeta({ title: 'Home 下書きプレビュー', robots: 'noindex, nofollow' });
+useSeoMeta({ title: `${definition.label} 下書きプレビュー`, robots: 'noindex, nofollow' });
+definePageMeta({ key: route => route.fullPath });
 onMounted(() => {
   try {
-    const saved = sessionStorage.getItem(homePreviewStorageKey);
+    const saved = sessionStorage.getItem(pageStorageKeys(page).preview);
     if (!saved) throw new Error('プレビュー用の下書きがありません。エディターから開いてください。');
-    document.value = parseHomeDocument(saved);
+    document.value = parsePageDocument(saved, page);
     ready.value = true;
   }
   catch (cause) { error.value = (cause as Error).message; }
@@ -19,13 +25,15 @@ onMounted(() => {
   <div>
     <div class="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-between gap-3 border-t border-primary-200 bg-white p-4">
       <p class="text-sm font-bold">
-        下書きプレビュー · 公開サイトには反映されていません
+        <span>{{ definition.label }} · {{ previewLabel }}</span>
+        <span class="block">公開サイトには反映されていません</span>
       </p>
       <div class="flex gap-2">
-        <UButton to="/editor">
+        <UButton :to="`/editor?page=${page}`">
           編集に戻る
         </UButton><UButton
-          to="/"
+          v-if="definition.published"
+          :to="definition.path"
           color="neutral"
           variant="outline"
         >
@@ -33,7 +41,7 @@ onMounted(() => {
         </UButton>
       </div>
     </div>
-    <TopHomeDocument
+    <EditorPageDocument
       v-if="ready"
       :document="document"
     />

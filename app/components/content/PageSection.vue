@@ -16,7 +16,7 @@ import TopHomeSection from '~/components/top/HomeSection.vue';
 import type { HomeSection } from '~/utils/homeDocument';
 import type { PageDocument, PageSection } from '~/utils/pageDocument';
 
-const props = defineProps<{ section: PageSection; page?: PageDocument['page']; aboutId?: string }>();
+const props = defineProps<{ section: PageSection; page?: PageDocument['page']; aboutId?: string; editorPreview?: boolean }>();
 const homeSection = computed(() => ['hero', 'about', 'news', 'contact'].includes(props.section.kind)
   ? props.section as HomeSection
   : undefined);
@@ -28,6 +28,7 @@ const content = computed(() => props.section.content);
     v-if="homeSection"
     :section="homeSection"
     :about-id="aboutId"
+    :image-provider="editorPreview ? 'none' : undefined"
   />
   <div
     v-else
@@ -46,6 +47,7 @@ const content = computed(() => props.section.content);
     <SitePageHero
       v-if="section.kind === 'page-hero'"
       class="page-content-hero"
+      :image-provider="editorPreview ? 'none' : undefined"
       :eyebrow="content.eyebrow!"
       :title="content.title!"
       :description="content.description!"
@@ -99,6 +101,7 @@ const content = computed(() => props.section.content);
     <ContentSplitContent
       v-else-if="section.kind === 'split-content'"
       :content="content"
+      :image-provider="editorPreview ? 'none' : undefined"
     />
     <SiteCtaBand
       v-else-if="section.kind === 'cta'"

@@ -5,6 +5,7 @@ defineProps<{
   description: string;
   image: string;
   imageAlt: string;
+  imageProvider?: 'none';
 }>();
 </script>
 
@@ -13,6 +14,7 @@ defineProps<{
     <span class="sr-only">{{ imageAlt }}</span>
     <NuxtPicture
       :src="image"
+      :provider="imageProvider"
       alt=""
       class="absolute inset-0 -z-10 block size-full"
       loading="eager"

@@ -8,6 +8,7 @@ defineProps<{ section: PageSection; page?: PageDocument['page']; aboutId?: strin
 <template>
   <ContentPageSection
     :section="section"
+    editor-preview
     :page="page"
     :about-id="aboutId"
   />

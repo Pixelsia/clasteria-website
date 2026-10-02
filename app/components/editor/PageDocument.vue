@@ -6,5 +6,8 @@ defineProps<{ document: PageDocument }>();
 </script>
 
 <template>
-  <ContentPageDocument :document="document" />
+  <ContentPageDocument
+    :document="document"
+    editor-preview
+  />
 </template>

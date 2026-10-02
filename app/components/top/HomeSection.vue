@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { HomeSection } from '~/utils/homeDocument';
 
-defineProps<{ section: HomeSection; aboutId?: string }>();
+defineProps<{ section: HomeSection; aboutId?: string; imageProvider?: 'none' }>();
 </script>
 
 <template>
@@ -15,6 +15,7 @@ defineProps<{ section: HomeSection; aboutId?: string }>();
       v-if="section.kind === 'hero'"
       :content="section.content"
       :about-id="aboutId"
+      :image-provider="imageProvider"
     />
     <TopAbout
       v-else-if="section.kind === 'about'"

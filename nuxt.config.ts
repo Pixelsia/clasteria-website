@@ -82,6 +82,9 @@ export default defineNuxtConfig({
   },
 
   image: {
+    // Editor-only assets are not discovered by public-page static image crawling.
+    // Register the pass-through provider for authenticated draft views only.
+    none: {},
     quality: 75,
     format: ['avif', 'webp'], // TODO: AVIF が Baseline Widely available になったら WebP を外す
     domains: [

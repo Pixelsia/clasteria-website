@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{ content: Record<string, string> }>();
+const props = defineProps<{ content: Record<string, string>; imageProvider?: 'none' }>();
 const items = computed(() => Array.from({ length: 2 }, (_, index) => ({
   title: props.content[`item${index + 1}Title`] ?? '',
   body: props.content[`item${index + 1}Body`] ?? '',
@@ -18,6 +18,7 @@ const items = computed(() => Array.from({ length: 2 }, (_, index) => ({
     >
       <NuxtPicture
         :src="content.image"
+        :provider="imageProvider"
         :alt="content.imageAlt"
         class="block aspect-video overflow-hidden rounded-lg"
         :img-attrs="{ class: 'size-full object-cover' }"

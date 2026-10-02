@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { homeSectionTemplates } from '~/utils/homeDocument';
-withDefaults(defineProps<{ content?: Record<string, string>; aboutId?: string }>(), {
+withDefaults(defineProps<{ content?: Record<string, string>; aboutId?: string; imageProvider?: 'none' }>(), {
   content: () => ({ ...homeSectionTemplates.hero.content }),
   aboutId: undefined,
+  imageProvider: undefined,
 });
 </script>
 
@@ -12,6 +13,7 @@ withDefaults(defineProps<{ content?: Record<string, string>; aboutId?: string }>
   >
     <NuxtPicture
       :src="content.image"
+      :provider="imageProvider"
       :alt="content.imageAlt"
       class="absolute inset-0 -z-10 block size-full"
       :img-attrs="{ class: 'size-full object-cover opacity-45' }"

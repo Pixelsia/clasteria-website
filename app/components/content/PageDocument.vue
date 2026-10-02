@@ -3,7 +3,7 @@ import PageSectionView from '~/components/content/PageSection.vue';
 import { useSiteReveal } from '~/composables/siteReveal';
 import type { PageDocument } from '~/utils/pageDocument';
 
-const props = defineProps<{ document: PageDocument }>();
+const props = defineProps<{ document: PageDocument; editorPreview?: boolean }>();
 const aboutId = computed(() => props.document.sections.find(section => section.kind === 'about')?.id);
 useSiteReveal();
 </script>
@@ -18,6 +18,7 @@ useSiteReveal();
       :key="section.id"
       :section="section"
       :page="document.page"
+      :editor-preview="editorPreview"
       :about-id="aboutId"
     />
   </article>

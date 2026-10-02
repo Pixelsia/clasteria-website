@@ -22,30 +22,30 @@
           <span class="text-primary-300">Clasteria</span>
         </h1>
         <p class="max-w-3xl text-lg leading-9 text-neutral-100">
-          見つける楽しさ。逃げきるスリル。<br>
-          Minecraft の世界を舞台に、みんなで遊ぶミニゲーム。
+          Minecraft の世界を舞台に、<br>
+          新しい体験をつくる Pixelsia のプロジェクト。
         </p>
         <div class="flex flex-wrap justify-center gap-3">
           <UButton
-            to="#games"
+            to="/articles"
             color="primary"
             trailing-icon="i-heroicons-arrow-right"
             size="xl"
           >
-            ゲームを知る
+            お知らせを見る
           </UButton>
           <UButton
-            to="/articles"
+            to="/support"
             color="neutral"
             variant="outline"
             size="xl"
             class="site-glass-action"
           >
-            お知らせを見る
+            お問い合わせ
           </UButton>
         </div>
         <a
-          href="#games"
+          href="#about"
           class="flex w-fit items-center gap-3 text-sm font-black uppercase tracking-widest text-neutral-200 hover:text-primary-200"
         >
           <UIcon

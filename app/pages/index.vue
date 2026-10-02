@@ -3,14 +3,14 @@ useSiteReveal();
 
 useSeoMeta({
   title: 'Home',
-  description: 'Minecraft の世界で、遊びからつながる。Clasteria のゲーム紹介、お知らせ、お問い合わせ。',
+  description: 'Minecraft の世界で、遊びからつながる。Clasteria の紹介、お知らせ、お問い合わせ。',
 });
 </script>
 
 <template>
   <article class="-mt-20">
     <TopHero />
-    <TopFeatures />
+    <TopAbout />
     <TopNews />
     <SiteCtaBand
       eyebrow="CONTACT"

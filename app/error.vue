@@ -22,7 +22,7 @@ useSeoMeta({ title: 'ページを表示できません', robots: 'noindex' });
         {{ error.statusCode === 404 ? 'ページが見つかりませんでした' : 'ページを表示できませんでした' }}
       </h1>
       <p class="max-w-lg leading-8 text-neutral-700">
-        お探しのページが見つからない場合は、Home からゲーム情報やお知らせをご覧ください。
+        お探しのページが見つからない場合は、Home からお知らせやお問い合わせをご覧ください。
       </p>
       <div class="flex flex-wrap justify-center gap-3">
         <UButton

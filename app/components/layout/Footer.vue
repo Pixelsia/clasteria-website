@@ -3,12 +3,17 @@ import type { FooterColumn } from '@nuxt/ui';
 
 const columns: FooterColumn[] = [
   {
-    label: 'ゲーム情報',
-    children: primaryNavItems.filter(item => ['/onigokko', '/kakurenbo'].includes(item.to)),
-  },
-  {
     label: 'Clasteria',
     children: primaryNavItems.filter(item => ['/', '/articles', '/support'].includes(item.to)),
+  },
+  {
+    label: '関連サービス',
+    children: relatedServices.map(service => ({
+      ...service,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      trailingIcon: 'i-heroicons-arrow-up-right',
+    })),
   },
 ];
 </script>
@@ -50,7 +55,7 @@ const columns: FooterColumn[] = [
                 <span class="text-sm font-bold tracking-wide text-neutral-300 md:text-base">Clasteria</span>
               </div>
               <p class="mt-4 max-w-xs text-sm leading-7 text-neutral-300">
-                Minecraft の世界で、遊びを通じてつながる。Clasteria のゲーム情報とお知らせをお届けします。
+                Minecraft の世界から、新しい体験を。Clasteria のお知らせとお問い合わせ情報をお届けします。
               </p>
             </div>
           </template>

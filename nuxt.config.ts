@@ -1,9 +1,16 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
+import { defaultMaintenanceUrl, isUnpublishedRoute, resolveMaintenanceUrl, unpublishedRouteVariants } from './shared/utils/maintenance';
+import { writeMaintenanceAssets } from './scripts/prebuild-maintenance';
 import { insertWbrToNodes, insertWbrToContent } from './scripts/prebuild-typography';
 import { ensureContentSymlink, generateContentSlug, detectContentOgImage, resolveContentImagePaths, contentHeading } from './scripts/prebuild-content';
 
 const isDev = process.env.NODE_ENV === 'development';
+const siteUrl = process.env.NUXT_SITE_URL || 'http://localhost:3000';
+const maintenanceUrl = resolveMaintenanceUrl(
+  process.env.NUXT_PUBLIC_MAINTENANCE_URL || defaultMaintenanceUrl,
+  siteUrl,
+);
 
 // TODO: Pixelsia や Clasteria、Minecraft 関係のドメインを追加する
 const imageDomains: Record<string, string> = {
@@ -26,6 +33,10 @@ export default defineNuxtConfig({
 
   // https://nuxt.com/docs/4.x/getting-started/deployment#static-hosting
   ssr: true,
+
+  runtimeConfig: {
+    public: { maintenanceUrl },
+  },
 
   devtools: {
     enabled: true,
@@ -92,7 +103,7 @@ export default defineNuxtConfig({
   },
 
   site: {
-    url: 'http://localhost:3000',
+    url: siteUrl,
     name: 'Clasteria',
     defaultLocale: 'ja_JP',
   },
@@ -104,16 +115,21 @@ export default defineNuxtConfig({
     prerender: {
       crawlLinks: true,
       failOnError: true,
+      ignore: unpublishedRouteVariants,
     },
   },
 
   hooks: {
     // Keep the prototype source for later work without registering unavailable routes.
     'pages:extend': (pages) => {
-      const excluded = new Set(['/codingcraft', '/leaderboard', '/login', '/register']);
       for (let index = pages.length - 1; index >= 0; index--) {
-        if (excluded.has(pages[index]!.path)) pages.splice(index, 1);
+        if (isUnpublishedRoute(pages[index]!.path)) pages.splice(index, 1);
       }
+    },
+    'nitro:init': (nitro) => {
+      nitro.hooks.hook('prerender:done', async () => {
+        await writeMaintenanceAssets(nitro.options.output.publicDir, maintenanceUrl, siteUrl);
+      });
     },
     'build:before': async () => {
       await ensureContentSymlink();

@@ -39,8 +39,6 @@ export type TodoItem = {
 // Initial release: only destinations with usable, public-facing content.
 export const primaryNavItems = [
   { label: 'Home', to: '/', eyebrow: 'HOME' },
-  { label: '鬼ごっこ', to: '/onigokko', eyebrow: 'ONIGOKKO' },
-  { label: 'かくれんぼ', to: '/kakurenbo', eyebrow: 'KAKURENBO' },
   { label: 'ニュース', to: '/articles', eyebrow: 'NEWS' },
   { label: 'お問い合わせ', to: '/support', eyebrow: 'SUPPORT' },
 ] satisfies SiteNavItem[];
@@ -50,6 +48,10 @@ export const siteNavItems = primaryNavItems;
 
 export const supportEmail = 'support@pixelsia.net';
 export const supportDiscord = 'https://discord.gg/TwTPa4Yp4h';
+
+export const relatedServices = [
+  { label: 'CodingCraft', to: 'https://codingcraft.pixelsia.net/login' },
+];
 
 export const featureCards = [
   {
@@ -212,7 +214,7 @@ export const supportTopics = [
 export const faqItems = [
   {
     label: 'ゲームへの参加方法を知りたいです',
-    content: '現在の受付状況や参加方法については、お問い合わせ窓口へご連絡ください。このサイトではゲームの概要と基本ルールをご紹介しています。',
+    content: '現在の受付状況や参加方法については、お問い合わせ窓口へご連絡ください。公開する情報は、このサイトのお知らせでご案内します。',
   },
   {
     label: '不具合を報告するときは、何を伝えればよいですか',

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
+import { defaultMaintenanceUrl, unpublishedRoutes, unpublishedRouteVariants } from '../shared/utils/maintenance.ts';
 
 const baseURL = process.env.BASE_URL || 'http://localhost:3000';
 const screenshots = process.env.SCREENSHOT_DIR;
@@ -9,8 +10,9 @@ const browser = await chromium.launch({
   headless: true,
   args: ['--no-sandbox'],
 });
-const pages = ['/', '/onigokko', '/kakurenbo', '/articles', '/support'];
-const excluded = ['/codingcraft', '/leaderboard', '/login', '/register'];
+const pages = ['/', '/articles', '/support'];
+const excluded = unpublishedRoutes;
+const maintenanceUrl = process.env.NUXT_PUBLIC_MAINTENANCE_URL || defaultMaintenanceUrl;
 const errors = [];
 
 try {
@@ -67,14 +69,40 @@ try {
   await page.getByRole('button', { name: 'ゲームへの参加方法を知りたいです' }).click();
   assert.ok(await page.getByText('現在の受付状況や参加方法については').isVisible());
 
-  for (const path of [...excluded, '/articles/20261001-missing']) {
+  // Stub only the external destination: verify navigation without relying on its uptime.
+  await page.route(url => url.origin === new URL(maintenanceUrl).origin, route => route.fulfill({
+    contentType: 'text/html',
+    body: '<!doctype html><title>Maintenance test destination</title><h1>Maintenance test destination</h1>',
+  }));
+  for (const path of unpublishedRouteVariants) {
+    const url = `${baseURL}${path}?maintenance_test=private`;
+    if (process.env.REQUIRE_HTTP_REDIRECTS === '1') {
+      const response = await context.request.get(url, { maxRedirects: 0 });
+      assert.equal(response.status(), 302, `${path}: temporary HTTP redirect`);
+      assert.equal(response.headers().location, maintenanceUrl, `${path}: no query forwarding`);
+    }
+    await page.goto(url);
+    await page.waitForURL(maintenanceUrl);
+    assert.equal(page.url(), maintenanceUrl, `${path}: clean maintenance destination`);
+  }
+
+  // Exercise Nuxt client navigation as well as direct static/HTTP requests.
+  await page.goto(baseURL);
+  await page.waitForFunction(() => !!document.querySelector('#__nuxt')?.__vue_app__);
+  await page.evaluate(() => {
+    document.querySelector('#__nuxt').__vue_app__.config.globalProperties.$router.push('/login?maintenance_test=private');
+  });
+  await page.waitForURL(maintenanceUrl);
+  assert.equal(page.url(), maintenanceUrl, 'client navigation uses the same clean destination');
+
+  for (const path of ['/missing', '/login/extra', '/articles/20261001-missing']) {
     await page.goto(`${baseURL}${path}`, { waitUntil: 'networkidle' });
     assert.ok(await page.getByRole('heading', { name: 'ページが見つかりませんでした' }).isVisible(), `${path}: 404`);
     assert.ok(!/Player 01|Coming soon/.test(await page.locator('body').innerText()));
   }
 
   assert.deepEqual(errors, [], 'no uncaught browser errors');
-  console.log('Passed: five pages at 1440/390/320px, images, safe links, menu/Escape/history, contacts, FAQ, excluded routes, no runtime errors.');
+  console.log('Passed: three pages at 1440/390/320px, images, safe links, menu/Escape/history, contacts, FAQ, maintenance redirects, unknown-route 404, no runtime errors.');
 }
 finally {
   await browser.close();

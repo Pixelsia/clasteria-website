@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import type { Editor } from 'grapesjs';
 import { configureHomeEditorCanvas } from './editorCanvas';
+import { createDefaultHomeDocument } from './homeDocument';
+import type { HomeSection } from './homeDocument';
+import type { PropType } from 'vue';
 
 const require = createRequire(import.meta.url);
 // The repository's jsdom dependency has no bundled declarations; type only this test's API.
@@ -22,7 +25,7 @@ afterEach(() => {
 });
 
 describe('home editor canvas lifecycle', () => {
-  it('mounts Vue and native layers during synchronous frame loading and preserves theme styles', async () => {
+  it('mounts context-dependent Vue sections and layers during synchronous frame loading', async () => {
     dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
       url: 'http://localhost/', pretendToBeVisual: true, resources: 'usable', runScripts: 'dangerously',
     });
@@ -33,7 +36,8 @@ describe('home editor canvas lifecycle', () => {
     vi.stubGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
     vi.stubGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window));
     vi.stubGlobal('cancelAnimationFrame', dom.window.cancelAnimationFrame.bind(dom.window));
-    const { defineComponent, h, onUnmounted, render, Suspense } = require('vue') as typeof import('vue');
+    const { createApp, defineComponent, getCurrentInstance, h, inject, onUnmounted, render } = await import('vue');
+    const { createEditorSectionVNode } = await import('../composables/editorSection');
     const grapesjs = require('grapesjs') as typeof import('grapesjs').default;
     vi.stubGlobal('ResizeObserver', class {
       observe() {}
@@ -48,12 +52,21 @@ describe('home editor canvas lifecycle', () => {
 
     const unmounted = vi.fn();
     const SectionView = defineComponent({
-      props: { title: { type: String, required: true } },
+      props: { section: { type: Object as PropType<HomeSection>, required: true } },
       setup(props) {
+        // Nuxt composables read appContext.app; image, UI, and router components
+        // also need the real root's plugins/provides, unlike a plain HTML stub.
+        expect(getCurrentInstance()!.appContext.app).toBe(app);
+        expect(inject('editor-theme')).toBe('clasteria');
         onUnmounted(unmounted);
-        return () => h('section', { class: 'home-section site-reveal' }, props.title);
+        return () => h('section', { class: 'home-section site-reveal' }, props.section.content.title);
       },
     });
+    const app = createApp(SectionView);
+    app.provide('editor-theme', 'clasteria');
+    const renderErrors = vi.fn();
+    app.config.errorHandler = renderErrors;
+    const sectionData = createDefaultHomeDocument().sections[0]!;
     editor = grapesjs.init({
       container: '#canvas',
       autorender: false,
@@ -69,8 +82,8 @@ describe('home editor canvas lifecycle', () => {
             init() { this.listenTo(this.model, 'change:section', this.renderSection); },
             onRender() { this.renderSection(); },
             renderSection() {
-              const section = this.model.get('section') as { id: string; title: string };
-              render(h(Suspense, {}, { default: () => h(SectionView, { title: section.title }) }), this.el);
+              const section = this.model.get('section') as HomeSection;
+              render(createEditorSectionVNode(SectionView, section, app._context), this.el);
               this.el.setAttribute('data-editor-section', section.id);
             },
             removed() { render(null, this.el); },
@@ -84,7 +97,7 @@ describe('home editor canvas lifecycle', () => {
       documentsDuringLoad.push(instance.Canvas.getDocument());
     });
     configureHomeEditorCanvas(instance, document);
-    instance.setComponents([{ type: 'clasteria-section', section: { id: 'hero', title: 'Original title' } }]);
+    instance.setComponents([{ type: 'clasteria-section', section: sectionData }]);
     instance.UndoManager.clear();
 
     // Reproduce a browser loading about:blank while GrapesJS appends its frame,
@@ -110,19 +123,20 @@ describe('home editor canvas lifecycle', () => {
     const frameDocument = instance.Canvas.getDocument();
     const frame = instance.Canvas.getFrameEl();
     const section = frameDocument.querySelector('[data-editor-section="hero"]')!;
-    expect(section.querySelector('.home-section')?.textContent).toBe('Original title');
+    expect(section.querySelector('.home-section')?.textContent).toBe(sectionData.content.title);
     expect(document.querySelectorAll('#layers .gjs-layer').length).toBeGreaterThan(0);
     expect(frameDocument.head.querySelector('[data-editor-theme]')?.textContent).toBe(theme.textContent);
     expect(frameDocument.head.querySelector('[data-clasteria-canvas]')?.textContent).toContain('opacity: 1 !important');
     expect(frameDocument.documentElement.lang).toBe('ja');
 
     const model = instance.getComponents().at(0);
-    model.set('section', { id: 'hero', title: 'Changed title' });
+    model.set('section', { ...sectionData, content: { ...sectionData.content, title: 'Changed title' } });
     expect(section.querySelector('.home-section')?.textContent).toBe('Changed title');
     expect(instance.UndoManager.hasUndo()).toBe(true);
     instance.UndoManager.undo();
-    expect(section.querySelector('.home-section')?.textContent).toBe('Original title');
+    expect(section.querySelector('.home-section')?.textContent).toBe(sectionData.content.title);
 
+    expect(renderErrors).not.toHaveBeenCalled();
     instance.destroy();
     editor = undefined;
     expect(unmounted).toHaveBeenCalledOnce();

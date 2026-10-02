@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { h, render, Suspense } from 'vue';
+import { render } from 'vue';
+import { createEditorSectionVNode } from '~/composables/editorSection';
 import type { Component, Editor } from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import { configureHomeEditorCanvas } from '~/utils/editorCanvas';
@@ -211,8 +212,7 @@ onMounted(async () => {
             renderSection() {
               const section = this.model.get('section') as HomeSection;
               if (!section) return;
-              const vnode = h(Suspense, {}, { default: () => h(HomeSectionView, { section, aboutId: 'about' }) });
-              vnode.appContext = appContext;
+              const vnode = createEditorSectionVNode(HomeSectionView, section, appContext);
               render(vnode, this.el);
               this.el.setAttribute('data-editor-section', section.id);
             },

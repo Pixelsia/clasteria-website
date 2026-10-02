@@ -32,6 +32,35 @@ describe('maintenance deployment assets', () => {
     }
   });
 
+  it('bundles the preview API beside redirects and fails closed without bindings', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'clasteria-editor-worker-'));
+    directories.push(directory);
+    await writeMaintenanceAssets(directory, destination, 'https://clasteria.pixelsia.net', 'codex/test');
+    const routes = JSON.parse(await readFile(join(directory, '_routes.json'), 'utf8'));
+    expect(routes.include).toContain('/api/editor/*');
+    const source = await readFile(join(directory, '_worker.js'), 'utf8');
+    const encoded = `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
+    const { default: worker } = await import(/* @vite-ignore */ encoded);
+    const assets = vi.fn(async () => new Response('asset'));
+    const env = { ASSETS: { fetch: assets } };
+    const response = await worker.fetch(new Request('https://preview.pages.dev/api/editor/home'), env);
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toBe('not_configured');
+    expect(assets).not.toHaveBeenCalled();
+    const redirect = await worker.fetch(new Request('https://preview.pages.dev/login?private=value'), env);
+    expect(redirect.status).toBe(302);
+    expect(redirect.headers.get('Location')).toBe(destination);
+    expect(await (await worker.fetch(new Request('https://preview.pages.dev/'), env)).text()).toBe('asset');
+  });
+
+  it('does not include the editor API in production builds even when main is passed', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'clasteria-production-worker-'));
+    directories.push(directory);
+    await writeMaintenanceAssets(directory, destination, 'https://clasteria.pixelsia.net', 'main');
+    expect(JSON.parse(await readFile(join(directory, '_routes.json'), 'utf8')).include).not.toContain('/api/editor/*');
+    expect(await readFile(join(directory, '_worker.js'), 'utf8')).not.toContain('editor_drafts');
+  });
+
   it('escapes the static fallback URL', () => {
     expect(renderMaintenanceHtml('https://pixelsia.net/a&b"<'))
       .toContain('href="https://pixelsia.net/a&amp;b&quot;&lt;"');

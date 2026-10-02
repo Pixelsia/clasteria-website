@@ -134,7 +134,10 @@ export default defineNuxtConfig({
     },
     'nitro:init': (nitro) => {
       nitro.hooks.hook('prerender:done', async () => {
-        await writeMaintenanceAssets(nitro.options.output.publicDir, maintenanceUrl, siteUrl);
+        await writeMaintenanceAssets(
+          nitro.options.output.publicDir, maintenanceUrl, siteUrl,
+          visualEditorEnabled ? process.env.CF_PAGES_BRANCH || 'local-preview' : undefined,
+        );
       });
     },
     'build:before': async () => {

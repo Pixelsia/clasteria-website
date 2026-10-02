@@ -11,6 +11,13 @@ import {
   serializeHomeDocument, validateHomeDocument,
 } from '~/utils/homeDocument';
 import type { HomeDocument, HomeSection, HomeSectionKind } from '~/utils/homeDocument';
+import {
+  acknowledgeHomeDraftSave, canApplyServerHomeDraft, createHomeDraftClientState, homeDraftRecoveryStorageKey,
+  homeDraftRequestTimeoutMs,
+  homeDraftResponseError, homeDraftSyncStorageKey, HomeDraftRequestError, isHomeDraftServerDirty,
+  parseServerHomeDraftResponse, recordHomeDraftEdit, restoreHomeDraftSyncState, serializeHomeDraftSyncState,
+} from '~/utils/homeDraftClient';
+import type { ServerHomeDraft } from '~/utils/homeDraftClient';
 
 const appContext = getCurrentInstance()!.appContext;
 const canvas = useTemplateRef('canvas');
@@ -27,6 +34,28 @@ const canUndo = ref(false);
 const canRedo = ref(false);
 const resetOpen = ref(false);
 const device = ref('Desktop');
+const draftState = shallowRef(createHomeDraftClientState(createDefaultHomeDocument()));
+const serverBusy = ref<'checking' | 'loading' | 'saving' | null>(null);
+const serverStatus = ref('サーバーの下書きを確認します');
+const serverError = shallowRef<HomeDraftRequestError>();
+const availableServerDraft = shallowRef<ServerHomeDraft | null>(null);
+const pendingServerLoad = shallowRef<{ draft: ServerHomeDraft; generation: number }>();
+const serverConflict = ref(false);
+const invalidDraft = ref(false);
+const protectedLocalDraft = ref<string>();
+const originalBackup = ref<string>();
+let protectedLocalGeneration = 0;
+const serverDirty = computed(() => invalidDraft.value || isHomeDraftServerDirty(draftState.value));
+const serverSavedAt = computed(() => draftState.value.base
+  ? new Date(draftState.value.base.updatedAt).toLocaleString('ja-JP')
+  : '');
+const saveRequiresLoad = computed(() => {
+  const available = availableServerDraft.value;
+  const base = draftState.value.base;
+  return serverConflict.value || (!!available && (!base || available.revision !== base.revision
+    || serializeHomeDocument(available.document) !== serializeHomeDocument(base.document)));
+});
+let serverRequest: AbortController | undefined;
 let editor: Editor | undefined;
 let syncing = false;
 let disposed = false;
@@ -57,29 +86,74 @@ function updateState() {
 function saveDraft() {
   if (!editor || syncing) return;
   try {
-    localStorage.setItem(homeDraftStorageKey, serializeHomeDocument(documentFromEditor()));
+    trackDocument();
+    const original = protectedLocalDraft.value;
+    if (original !== undefined) {
+      if (draftState.value.generation === protectedLocalGeneration) {
+        status.value = '読み込めない元のバックアップを保持しています。必要に応じて書き出してください';
+        return false;
+      }
+      const recovered = localStorage.getItem(homeDraftRecoveryStorageKey);
+      if (recovered !== null && recovered !== original) {
+        throw new Error('別の元バックアップが保管されているため、自動保存を停止しました。元のバックアップと現在の下書きを書き出して保管してください。');
+      }
+      // Preserve the exact unreadable text before replacing the active backup.
+      localStorage.setItem(homeDraftRecoveryStorageKey, original);
+      originalBackup.value = original;
+    }
+    localStorage.setItem(homeDraftStorageKey, draftState.value.current);
+    protectedLocalDraft.value = undefined;
     status.value = 'このブラウザーに保存済み';
+    try {
+      localStorage.setItem(homeDraftSyncStorageKey, serializeHomeDraftSyncState(draftState.value));
+    }
+    catch { status.value = 'このブラウザーに保存済み。次回はサーバーの下書きを読み込み直してください'; }
+    return true;
   }
   catch (cause) {
-    error.value = cause instanceof Error ? cause.message : '保存できませんでした。';
+    error.value = protectedLocalDraft.value !== undefined
+      ? `元のバックアップを保護するため、自動保存を停止しています。元のバックアップと現在の下書きを書き出してください。${cause instanceof Error ? cause.message : ''}`
+      : cause instanceof Error ? cause.message : '保存できませんでした。';
     status.value = '保存できません。下書きを書き出して保管してください';
+    return false;
   }
+}
+function trackDocument() {
+  draftState.value = recordHomeDraftEdit(draftState.value, documentFromEditor());
+  invalidDraft.value = false;
 }
 function changed() {
   if (syncing) return;
   updateState();
+  try {
+    trackDocument();
+  }
+  catch {
+    invalidDraft.value = true;
+    draftState.value = { ...draftState.value, generation: draftState.value.generation + 1 };
+  }
   status.value = '変更を保存しています…';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveDraft, 300);
 }
-function applyDocument(document: HomeDocument) {
+function applyDocument(document: HomeDocument, serverDraft?: ServerHomeDraft) {
   if (!editor) return;
+  const generation = draftState.value.generation;
   syncing = true;
   editor.setComponents(document.sections.map(section => ({ type: 'clasteria-section', section })));
   editor.UndoManager.clear();
   editor.select(editor.getComponents().at(0));
   syncing = false;
   updateState();
+  trackDocument();
+  if (draftState.value.generation === generation) {
+    draftState.value = { ...draftState.value, generation: generation + 1 };
+  }
+  if (serverDraft) {
+    draftState.value = { ...draftState.value, base: serverDraft };
+    availableServerDraft.value = serverDraft;
+    serverConflict.value = false;
+  }
 }
 function changeField(key: string, value: string) {
   const model = selectedModel();
@@ -136,15 +210,26 @@ function changeDevice(value: string) {
   device.value = value;
   editor?.setDevice(value);
 }
+function downloadJson(json: string, filename: string) {
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function downloadOriginalBackup() {
+  if (originalBackup.value === undefined) return;
+  try {
+    downloadJson(originalBackup.value, 'clasteria-home-original-backup.json');
+    status.value = '元のバックアップを書き出しました。ファイルを保管してください';
+  }
+  catch (cause) { error.value = (cause as Error).message; }
+}
 function downloadDraft() {
   try {
-    const blob = new Blob([serializeHomeDocument(documentFromEditor())], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'clasteria-home-draft.json';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadJson(serializeHomeDocument(documentFromEditor()), 'clasteria-home-draft.json');
     status.value = '下書きを書き出しました。ファイルを保管してください';
   }
   catch (cause) { error.value = (cause as Error).message; }
@@ -153,13 +238,17 @@ async function importDraft(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
+  const generation = draftState.value.generation;
   try {
     if (file.size > maxHomeDocumentBytes) throw new Error('下書きファイルは 100 KB 以下にしてください。');
     const document = parseHomeDocument(await file.text());
+    if (disposed) return;
+    if (!canApplyServerHomeDraft(draftState.value, generation)) {
+      throw new Error('読み込み中に編集されたため、JSON の読み込みを中止しました。もう一度ファイルを選択してください。');
+    }
     applyDocument(document);
     error.value = '';
-    saveDraft();
-    status.value = '下書きを読み込み、このブラウザーに保存しました';
+    if (saveDraft()) status.value = '下書きを読み込み、このブラウザーに保存しました';
   }
   catch (cause) { error.value = (cause as Error).message; }
   finally { input.value = ''; }
@@ -176,6 +265,125 @@ function resetDraft() {
   error.value = '';
   saveDraft();
   resetOpen.value = false;
+}
+
+async function requestServerDraft(method: 'GET' | 'PUT', body?: { document: HomeDocument; baseRevision: number }) {
+  const controller = new AbortController();
+  serverRequest = controller;
+  const timer = setTimeout(() => controller.abort(), homeDraftRequestTimeoutMs);
+  try {
+    const response = await fetch('/api/editor/home', {
+      method, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal,
+      headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) throw homeDraftResponseError(response.status);
+    let result: unknown;
+    try {
+      result = await response.json();
+    }
+    catch { throw new HomeDraftRequestError('invalid_response', 'サーバーの応答を確認できませんでした。ログインと保存先の設定を確認してください。'); }
+    return parseServerHomeDraftResponse(result);
+  }
+  catch (cause) {
+    if (cause instanceof HomeDraftRequestError) throw cause;
+    if (controller.signal.aborted) {
+      throw new HomeDraftRequestError('timeout', '通信がタイムアウトしました。保存結果は未確認です。下書きを書き出して保管し、接続を再確認してください。');
+    }
+    throw new HomeDraftRequestError('network', '通信できませんでした。ネットワークとログイン状態を確認し、もう一度お試しください。現在の編集内容は残っています。');
+  }
+  finally {
+    clearTimeout(timer);
+    if (serverRequest === controller) serverRequest = undefined;
+  }
+}
+function reportServerError(cause: unknown) {
+  serverError.value = cause instanceof HomeDraftRequestError
+    ? cause
+    : new HomeDraftRequestError('validation', cause instanceof Error ? cause.message : '下書きを保存できませんでした。');
+  if (serverError.value.code === 'conflict') serverConflict.value = true;
+}
+async function checkServerDraft(allowAutoLoad = false, requestLoad = false) {
+  if (!ready.value || serverBusy.value) return;
+  serverBusy.value = requestLoad ? 'loading' : 'checking';
+  serverError.value = undefined;
+  const generation = draftState.value.generation;
+  try {
+    const draft = await requestServerDraft('GET');
+    if (disposed) return;
+    availableServerDraft.value = draft;
+    // A successful refresh supersedes any older load confirmation.
+    pendingServerLoad.value = undefined;
+    if (!draft) {
+      const hadBaseline = !!draftState.value.base;
+      draftState.value = { ...draftState.value, base: null };
+      serverConflict.value = false;
+      if (hadBaseline) saveDraft();
+      serverStatus.value = 'サーバーに下書きはありません。「下書きを保存」で作成できます';
+      return;
+    }
+    if (allowAutoLoad && canApplyServerHomeDraft(draftState.value, generation)) {
+      applyDocument(draft.document, draft);
+      saveDraft();
+      serverStatus.value = 'サーバーの下書きを読み込みました';
+    }
+    else if (requestLoad) {
+      pendingServerLoad.value = { draft, generation: draftState.value.generation };
+      serverStatus.value = '読み込む前に、現在の下書きを書き出して保管してください';
+    }
+    else {
+      serverStatus.value = saveRequiresLoad.value
+        ? 'サーバーに下書きがあります。現在の編集内容を保管してから読み込んでください'
+        : 'サーバーの下書きを確認しました';
+    }
+  }
+  catch (cause) {
+    if (!disposed) reportServerError(cause);
+  }
+  finally { if (!disposed) serverBusy.value = null; }
+}
+function confirmServerLoad() {
+  const pending = pendingServerLoad.value;
+  if (!pending || serverBusy.value) return;
+  if (!canApplyServerHomeDraft(draftState.value, pending.generation)) {
+    pendingServerLoad.value = { ...pending, generation: draftState.value.generation };
+    serverStatus.value = '確認中に編集されました。新しい変更も書き出してから、もう一度「置き換えて読み込む」を押してください';
+    return;
+  }
+  applyDocument(pending.draft.document, pending.draft);
+  pendingServerLoad.value = undefined;
+  serverError.value = undefined;
+  saveDraft();
+  serverStatus.value = 'サーバーの下書きを読み込みました。公開サイトは変わりません';
+}
+function cancelServerLoad() {
+  pendingServerLoad.value = undefined;
+  serverStatus.value = '読み込みをキャンセルしました。現在の編集内容を保持しています';
+}
+async function saveServerDraft() {
+  if (!ready.value || serverBusy.value || pendingServerLoad.value
+    || saveRequiresLoad.value || !serverDirty.value) return;
+  serverBusy.value = 'saving';
+  serverError.value = undefined;
+  try {
+    trackDocument();
+    const submitted = { document: documentFromEditor(), baseRevision: draftState.value.base?.revision ?? 0 };
+    const draft = await requestServerDraft('PUT', submitted);
+    if (disposed) return;
+    if (!draft) throw new HomeDraftRequestError('invalid_response', '保存結果を確認できませんでした。接続を再確認してください。');
+    draftState.value = acknowledgeHomeDraftSave(draftState.value, draft, submitted);
+    availableServerDraft.value = draft;
+    serverConflict.value = false;
+    if (protectedLocalDraft.value !== undefined) protectedLocalGeneration = -1;
+    saveDraft();
+    serverStatus.value = serverDirty.value
+      ? '送信した内容を保存しました。その後の変更は、もう一度保存してください'
+      : 'サーバーに下書きを保存しました。公開サイトは変わりません';
+  }
+  catch (cause) {
+    if (!disposed) reportServerError(cause);
+  }
+  finally { if (!disposed) serverBusy.value = null; }
 }
 
 onMounted(async () => {
@@ -253,21 +461,43 @@ onMounted(async () => {
     editor.on('component:selected component:deselected', updateState);
     editor.on('update', changed);
     let initial = createDefaultHomeDocument();
+    let hasLocalBackup = false;
+    let savedSync: string | null = null;
+    let saved: string | null = null;
     try {
-      const saved = localStorage.getItem(homeDraftStorageKey);
-      if (saved) initial = parseHomeDocument(saved);
-      status.value = saved ? 'このブラウザーの下書きを復元しました' : '公開版から開始しました';
+      saved = localStorage.getItem(homeDraftStorageKey);
+      hasLocalBackup = saved !== null;
+      if (saved !== null) initial = parseHomeDocument(saved);
+      status.value = hasLocalBackup ? 'このブラウザーの下書きを復元しました' : '公開版から開始しました';
     }
-    catch { error.value = '保存済みの下書きを読み込めませんでした。公開版を表示しています。'; }
+    catch {
+      hasLocalBackup = true;
+      if (saved !== null) {
+        protectedLocalDraft.value = saved;
+        originalBackup.value = saved;
+      }
+      error.value = '保存済みの下書きを読み込めませんでした。元のバックアップを保持し、公開版を表示しています。';
+    }
+    try {
+      if (protectedLocalDraft.value === undefined) savedSync = localStorage.getItem(homeDraftSyncStorageKey);
+      originalBackup.value ??= localStorage.getItem(homeDraftRecoveryStorageKey) ?? undefined;
+    }
+    catch { /* Optional recovery metadata must not prevent opening the editor. */ }
     applyDocument(initial);
+    protectedLocalGeneration = draftState.value.generation;
+    draftState.value = restoreHomeDraftSyncState(draftState.value, savedSync);
     // Register the frame lifecycle handlers before an iframe can start loading.
     editor.render();
     ready.value = true;
+    window.addEventListener('pagehide', saveDraft);
+    void checkServerDraft(!hasLocalBackup);
   }
   catch { error.value = 'エディターを読み込めませんでした。ページを再読み込みしてください。'; }
 });
 onBeforeUnmount(() => {
   disposed = true;
+  serverRequest?.abort();
+  window.removeEventListener('pagehide', saveDraft);
   clearTimeout(saveTimer);
   clearTimeout(canvasTimer);
   if (ready.value) saveDraft();
@@ -320,6 +550,24 @@ onBeforeUnmount(() => {
           下書き書き出し
         </UButton>
         <UButton
+          color="neutral"
+          variant="outline"
+          :disabled="!ready || !!serverBusy || !!pendingServerLoad"
+          :loading="serverBusy === 'loading'"
+          @click="checkServerDraft(false, true)"
+        >
+          サーバーの下書きを読み込む
+        </UButton>
+        <UButton
+          :disabled="!ready || !!serverBusy || !!pendingServerLoad || saveRequiresLoad || !serverDirty"
+          :loading="serverBusy === 'saving'"
+          @click="saveServerDraft"
+        >
+          下書きを保存
+        </UButton>
+        <UButton
+          color="neutral"
+          variant="outline"
           :disabled="!ready"
           @click="preview"
         >
@@ -343,7 +591,7 @@ onBeforeUnmount(() => {
       >
     </header>
     <div class="editor-notice">
-      <p>下書きはこの端末・このブラウザーだけに自動保存されます。公開サイトは変わりません。別の端末・プレビュー URL へ移す場合は JSON を書き出してください。</p>
+      <p>編集中の内容はこのブラウザーに自動保存されます。「下書きを保存」でサーバーにも保存できます。保存・読み込みでは公開サイトは変わりません。JSON でも保管できます。</p>
       <p
         role="status"
         aria-live="polite"
@@ -351,6 +599,119 @@ onBeforeUnmount(() => {
       >
         {{ status }}
       </p>
+    </div>
+    <section
+      class="border-b border-neutral-200 bg-white px-5 py-3 text-sm"
+      aria-label="サーバーの下書き保存"
+    >
+      <div
+        role="status"
+        aria-live="polite"
+      >
+        <p class="font-bold">
+          {{ serverDirty ? 'サーバーに未保存の変更があります' : 'この内容はサーバーに保存済みです' }}
+        </p>
+        <p>{{ serverBusy === 'checking' ? 'サーバーの下書きを確認しています…' : serverStatus }}</p>
+        <p
+          v-if="draftState.base"
+          class="mt-1 text-xs text-neutral-600"
+        >
+          読み込み・保存済みのリビジョン: {{ draftState.base.revision }} / {{ serverSavedAt }}
+        </p>
+      </div>
+      <p
+        v-if="saveRequiresLoad && !serverError"
+        class="mt-2 text-amber-800"
+      >
+        サーバーの内容を確認するまで保存できません。必要な変更は JSON に書き出し、サーバーの下書きを読み込んでください。
+      </p>
+      <div
+        v-if="serverError"
+        role="alert"
+        class="mt-2 text-red-800"
+      >
+        <p>{{ serverError.message }}</p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <UButton
+            v-if="['authentication', 'forbidden', 'network', 'invalid_response'].includes(serverError.code)"
+            href="/editor"
+            target="_blank"
+            rel="noopener noreferrer"
+            color="neutral"
+            variant="outline"
+            size="xs"
+          >
+            別タブでログインを確認
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="xs"
+            :disabled="!!serverBusy"
+            @click="checkServerDraft()"
+          >
+            接続を再確認
+          </UButton>
+        </div>
+      </div>
+      <div
+        v-if="pendingServerLoad"
+        class="mt-3 rounded border border-amber-300 bg-amber-50 p-3"
+        role="alertdialog"
+        aria-labelledby="server-load-title"
+        aria-describedby="server-load-description"
+      >
+        <h2
+          id="server-load-title"
+          class="font-bold"
+        >
+          サーバーの下書きで置き換えますか？
+        </h2>
+        <p id="server-load-description">
+          現在の編集内容とブラウザーの下書きは、リビジョン {{ pendingServerLoad.draft.revision }} の内容に置き換わります。
+          残したい変更は、先に「下書き書き出し」で JSON を保管してください。公開サイトは変わりません。
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <UButton
+            color="neutral"
+            variant="outline"
+            size="sm"
+            @click="downloadDraft"
+          >
+            下書き書き出し
+          </UButton>
+          <UButton
+            size="sm"
+            @click="confirmServerLoad"
+          >
+            置き換えて読み込む
+          </UButton>
+          <UButton
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="cancelServerLoad"
+          >
+            キャンセル
+          </UButton>
+        </div>
+      </div>
+    </section>
+    <div
+      v-if="originalBackup !== undefined"
+      class="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900"
+      role="status"
+    >
+      <p>読み込めない元のバックアップを保持しています。元のデータは書き出して保管できます。</p>
+      <UButton
+        class="mt-2"
+        color="neutral"
+        variant="outline"
+        size="sm"
+        @click="downloadOriginalBackup"
+      >
+        元のバックアップを書き出す
+      </UButton>
     </div>
     <div
       v-if="error"
@@ -422,7 +783,7 @@ onBeforeUnmount(() => {
             セクションを選択し、右側で文章・画像・色・余白を変更します。ニュース本文は公開済みの記事から表示します。
           </p>
           <p class="mt-3">
-            プレビューで PC・スマートフォン表示を確認し、下書きを書き出してください。公開には、その JSON をブランチへ取り込み、確認・デプロイする作業が必要です。
+            サーバーへの保管は「下書きを保存」を使ってください。プレビューで PC・スマートフォン表示も確認してください。公開には、書き出した JSON をブランチへ取り込み、確認・デプロイする作業が必要です。
           </p>
           <p class="mt-3">
             機密情報は入力しないでください。共有端末では下書きが残ります。履歴はこの編集画面を開いている間のみ有効です。
@@ -584,7 +945,7 @@ onBeforeUnmount(() => {
               :rows="['description', 'cardBody', 'title'].includes(key) ? 3 : 2"
               :value="value"
               maxlength="2000"
-              @change="changeField(key, ($event.target as HTMLTextAreaElement).value)"
+              @input="changeField(key, ($event.target as HTMLTextAreaElement).value)"
             />
           </div>
           <h3 class="mb-3 mt-6 font-black">

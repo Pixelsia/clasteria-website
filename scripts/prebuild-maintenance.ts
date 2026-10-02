@@ -1,5 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
 import { resolveMaintenanceUrl, unpublishedRoutes, unpublishedRouteVariants } from '../shared/utils/maintenance';
 
 export function renderMaintenanceHtml(destination: string): string {
@@ -33,14 +35,24 @@ export default {
 };\n`;
 }
 
-export async function writeMaintenanceAssets(publicDir: string, maintenanceUrl: string, siteUrl: string) {
+export async function writeMaintenanceAssets(
+  publicDir: string, maintenanceUrl: string, siteUrl: string, editorScope?: string,
+) {
   const destination = resolveMaintenanceUrl(maintenanceUrl, siteUrl);
   await mkdir(publicDir, { recursive: true });
+  const editorEnabled = Boolean(editorScope && editorScope !== 'main');
+  const worker = editorEnabled
+    ? (await build({
+        entryPoints: [fileURLToPath(new URL('../server/pages-worker.ts', import.meta.url))],
+        bundle: true, write: false, format: 'esm', platform: 'browser', target: 'es2022', minify: true,
+        define: { MAINTENANCE_DESTINATION: JSON.stringify(destination), EDITOR_SCOPE: JSON.stringify(editorScope) },
+      })).outputFiles[0]!.text
+    : renderMaintenanceWorker(destination);
   await Promise.all([
-    writeFile(join(publicDir, '_worker.js'), renderMaintenanceWorker(destination)),
+    writeFile(join(publicDir, '_worker.js'), worker),
     writeFile(join(publicDir, '_routes.json'), JSON.stringify({
       version: 1,
-      include: unpublishedRouteVariants,
+      include: [...unpublishedRouteVariants, ...(editorEnabled ? ['/api/editor/*'] : [])],
       exclude: [],
     }, null, 2) + '\n'),
     // Generic static previews cannot emit an HTTP 302. These tiny files only redirect;

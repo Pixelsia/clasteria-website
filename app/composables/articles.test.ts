@@ -68,7 +68,19 @@ describe('published Clasteria articles', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-02T00:00:00.000Z'));
     vi.stubGlobal('toValue', toValue);
-    vi.stubGlobal('prerenderRoutes', vi.fn());
+    let hasRequestContext = false;
+    vi.stubGlobal('useNuxtApp', () => ({
+      runWithContext: (callback: () => void) => {
+        hasRequestContext = true;
+        try {
+          return callback();
+        }
+        finally {
+          hasRequestContext = false;
+        }
+      },
+    }));
+    vi.stubGlobal('prerenderRoutes', vi.fn(() => expect(hasRequestContext).toBe(true)));
     vi.stubGlobal('useAsyncData', async (
       _key: unknown,
       handler: () => Promise<unknown>,

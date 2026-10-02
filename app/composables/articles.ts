@@ -51,10 +51,12 @@ function queryPublishedArticles(now: string) {
  * @remark サーバー側のページ処理から呼び出す。
  */
 export async function prerenderPublishedArticleRoutes(): Promise<void> {
+  const nuxtApp = useNuxtApp();
   const articles = await queryPublishedArticles(new Date().toISOString())
     .select('slug')
     .all();
-  prerenderRoutes(articles.map(article => `/articles/${article.slug}`));
+  // await の後も、prerenderRoutes が必要とするリクエストのコンテキストを維持する。
+  nuxtApp.runWithContext(() => prerenderRoutes(articles.map(article => `/articles/${article.slug}`)));
 }
 
 /**

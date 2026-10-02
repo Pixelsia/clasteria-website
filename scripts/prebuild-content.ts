@@ -5,14 +5,24 @@ import { textContent, visit } from 'minimark';
 import type { MinimarkElement, MinimarkTree, ParsedContentFile } from '@nuxt/content';
 
 /**
- * まだ `public/_content` が無いなら、デモデータへのリンクを貼る
+ * 外部の記事を配置するディレクトリを用意する。デモ記事は自動公開しない。
+ * @remark 既存のビルド設定との互換性のため関数名は維持する。
  */
-export async function ensureContentSymlink() {
-  await fs.symlink(path.resolve('content-demo'), path.resolve('public/_content'), 'junction')
-    .catch((error) => {
-      if (error instanceof Error && 'code' in error && error.code === 'EEXIST') return;
-      throw error;
-    });
+export async function ensureContentSymlink(rootDir = process.cwd()) {
+  const contentDir = path.resolve(rootDir, 'public/_content');
+  const demoDir = path.resolve(rootDir, 'content-demo');
+  const target = await fs.realpath(contentDir).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return undefined;
+    throw error;
+  });
+
+  // 以前のビルドが作ったリンクを残したまま、架空の記事や画像を配信しない。
+  // 外部コンテンツへのリンクやディレクトリには触れず、誤設定はビルドを止める。
+  if (target === demoDir || target?.startsWith(`${demoDir}${path.sep}`)) {
+    throw new Error('public/_content points to content-demo. Remove the demo link before building.');
+  }
+
+  await fs.mkdir(path.join(contentDir, 'articles'), { recursive: true });
 }
 
 /**

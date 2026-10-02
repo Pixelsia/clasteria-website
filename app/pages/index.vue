@@ -3,7 +3,7 @@ useSiteReveal();
 
 useSeoMeta({
   title: 'Home',
-  description: 'Clasteria の公式サイト入口。CodingCraft、鬼ごっこ、かくれんぼ、リーダーボードへ案内します。',
+  description: 'Minecraft の世界で、遊びからつながる。Clasteria のゲーム紹介、お知らせ、お問い合わせ。',
 });
 </script>
 
@@ -12,5 +12,12 @@ useSeoMeta({
     <TopHero />
     <TopFeatures />
     <TopNews />
+    <SiteCtaBand
+      eyebrow="CONTACT"
+      title="知りたいこと、困ったこと。"
+      description="ゲームへの参加やご質問、不具合のご報告はこちらから。"
+      primary-label="お問い合わせ"
+      primary-to="/support"
+    />
   </article>
 </template>

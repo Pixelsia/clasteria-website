@@ -19,7 +19,7 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
         <SiteSectionHeader
           eyebrow="NEWS"
           title="ニュース"
-          description="HP 仕様書にあるニュース面は、既存の記事機能を入口として表示します。"
+          description="Clasteria からのお知らせをお届けします。"
         />
         <UButton
           to="/articles"
@@ -49,7 +49,7 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
         v-else
         class="mt-10 rounded-lg border border-neutral-200 bg-white p-6 text-neutral-700"
       >
-        記事が登録されていない場合は、ニュース一覧の枠だけを表示します。
+        現在、掲載しているお知らせはありません。
       </p>
     </div>
   </UContainer>

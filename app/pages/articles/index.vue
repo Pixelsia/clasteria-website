@@ -3,10 +3,16 @@ useSiteReveal();
 
 useSeoMeta({
   title: 'ニュース',
-  description: 'Clasteria と Pixelsia 関連のニュース一覧です。',
+  description: 'Clasteria のお知らせをお届けします。',
 });
 
-const articlesList = await useArticlesList();
+const page = ref(1);
+const pageSize = 20;
+const articlesList = await useArticlesList({ page: () => page.value - 1, limit: pageSize });
+
+if (import.meta.server) {
+  await prerenderPublishedArticleRoutes();
+}
 
 const displayArticles = computed(() => articlesList.value.articles.map(article => ({
   ...article,
@@ -21,7 +27,7 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
     <SitePageHero
       eyebrow="NEWS"
       title="ニュース"
-      description="HP 仕様書では、Pixelsia と Connectia におけるニュースを紹介するページです。この実装では既存の articles 機能を壊さず、記事一覧として表示します。"
+      description="Clasteria のお知らせをお届けします。"
       image="/images/clasteria/home-main-visual.png"
       image-alt="ニュースのイメージ"
     />
@@ -51,18 +57,24 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
         class="site-reveal rounded-lg border border-neutral-200 bg-neutral-50 p-8"
       >
         <h2 class="text-2xl font-black text-neutral-950">
-          記事はまだありません
+          現在、公開中のお知らせはありません
         </h2>
         <p class="mt-3 leading-7 text-neutral-700">
-          ニュースの対象範囲と運用方法は未決です。
+          新しいお知らせは、このページでご案内します。
         </p>
       </div>
 
-      <SiteTodoNotice
-        class="site-reveal mt-10"
-        title="ニュースの未決事項"
-        :items="[unresolvedItems[4]]"
-      />
+      <nav
+        v-if="articlesList.total > pageSize"
+        aria-label="ニュース一覧のページ切り替え"
+        class="mt-10 flex justify-center"
+      >
+        <UPagination
+          v-model:page="page"
+          :items-per-page="pageSize"
+          :total="articlesList.total"
+        />
+      </nav>
     </UContainer>
   </article>
 </template>

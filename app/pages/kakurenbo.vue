@@ -18,12 +18,12 @@ useSeoMeta({
     >
       <template #actions>
         <UButton
-          to="/leaderboard"
+          to="#how-to-play"
           color="primary"
-          trailing-icon="i-heroicons-trophy"
+          trailing-icon="i-heroicons-arrow-down"
           size="xl"
         >
-          ランキングを見る
+          遊び方を見る
         </UButton>
         <UButton
           to="/onigokko"
@@ -36,15 +36,18 @@ useSeoMeta({
       </template>
     </SitePageHero>
 
+    <GameAvailability />
+
     <UContainer
+      id="how-to-play"
       as="section"
-      class="py-20"
+      class="scroll-mt-24 py-20"
     >
       <SiteSectionHeader
         class="site-reveal"
         eyebrow="FLOW"
-        title="待機、投票、擬態、探索"
-        description="かくれんぼ README の処理フローに沿って、初期公開の紹介ページで扱う範囲を整理しています。"
+        title="予定している遊び方"
+        description="風景の一部になるか、小さな違和感を見つけるか。立場が変わると、同じ景色の見え方も変わります。"
       />
 
       <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -66,10 +69,10 @@ useSeoMeta({
             PLAYER ACTIONS
           </p>
           <h2 class="text-3xl font-black leading-tight text-neutral-950 md:text-5xl">
-            逃走者と鬼の役割を明確に見せる
+            隠れる側も、探す側も。
           </h2>
           <p class="leading-8 text-neutral-700">
-            仕様では、逃走者は擬態、妨害、挑発、ミッションで生存を狙い、鬼は捕獲ツールで探索します。捕獲後は捕獲済み状態、透明、観戦または移動の動線へ進みます。
+            逃走者はブロックに擬態し、見つからない場所を探します。鬼はマップを観察して、風景に隠れた逃走者を探し出します。
           </p>
         </div>
         <div class="site-reveal grid gap-4">
@@ -95,10 +98,10 @@ useSeoMeta({
 
     <SiteCtaBand
       eyebrow="NEXT"
-      title="ミニゲームの順位枠へ"
-      description="各ゲーム Top10 の枠は用意していますが、データソースと更新方法は未決です。"
-      primary-label="リーダーボードへ"
-      primary-to="/leaderboard"
+      title="次は、鬼ごっこの世界へ。"
+      description="ルールによって変わる追いかけっこ。仲間を助ける駆け引きも、鬼ごっこの楽しさです。"
+      primary-label="鬼ごっこを見る"
+      primary-to="/onigokko"
       secondary-label="サポートへ"
       secondary-to="/support"
     />

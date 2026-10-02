@@ -1,6 +1,17 @@
 <script setup lang="ts">
 const route = useRoute();
 const isMenuOpen = ref(false);
+const menuButton = useTemplateRef('menuButton');
+
+function toggleMenu() {
+  isMenuOpen.value = !isMenuOpen.value;
+}
+
+function closeMenu() {
+  if (!isMenuOpen.value) return;
+  isMenuOpen.value = false;
+  menuButton.value?.$el?.focus();
+}
 
 const isActive = (to: string): boolean => {
   if (to === '/') return route.path === '/';
@@ -13,7 +24,10 @@ watch(() => route.fullPath, () => {
 </script>
 
 <template>
-  <header class="site-glass-header sticky top-0 z-50">
+  <header
+    class="site-glass-header sticky top-0 z-50"
+    @keydown.esc="closeMenu"
+  >
     <UContainer class="flex h-20 items-center justify-between gap-4">
       <NuxtLink
         to="/"
@@ -32,7 +46,10 @@ watch(() => route.fullPath, () => {
         <span class="text-sm font-bold tracking-wide text-neutral-500 md:text-base">Clasteria</span>
       </NuxtLink>
 
-      <nav class="hidden items-center gap-1 xl:flex">
+      <nav
+        aria-label="メインナビゲーション"
+        class="hidden items-center gap-1 lg:flex"
+      >
         <NuxtLink
           v-for="item in primaryNavItems"
           :key="item.to"
@@ -45,38 +62,26 @@ watch(() => route.fullPath, () => {
         </NuxtLink>
       </nav>
 
-      <div class="hidden items-center gap-2 xl:flex">
-        <UButton
-          to="/login"
-          color="neutral"
-          variant="ghost"
-        >
-          ログイン
-        </UButton>
-        <UButton
-          to="/register"
-          color="primary"
-          trailing-icon="i-heroicons-arrow-right"
-        >
-          購入・登録
-        </UButton>
-      </div>
-
       <UButton
-        class="xl:hidden"
+        ref="menuButton"
+        class="lg:hidden"
         :icon="isMenuOpen ? 'i-heroicons-x-mark' : 'i-heroicons-bars-3'"
         color="neutral"
         variant="ghost"
         square
         size="lg"
         :aria-label="isMenuOpen ? 'メニューを閉じる' : 'メニューを開く'"
-        @click="isMenuOpen = !isMenuOpen"
+        :aria-expanded="isMenuOpen"
+        aria-controls="mobile-navigation"
+        @click="toggleMenu"
       />
     </UContainer>
 
-    <div
+    <nav
       v-if="isMenuOpen"
-      class="site-glass-menu xl:hidden"
+      id="mobile-navigation"
+      aria-label="モバイルナビゲーション"
+      class="site-glass-menu lg:hidden"
     >
       <UContainer class="grid gap-2 py-4">
         <NuxtLink
@@ -90,6 +95,6 @@ watch(() => route.fullPath, () => {
           {{ item.label }}
         </NuxtLink>
       </UContainer>
-    </div>
+    </nav>
   </header>
 </template>

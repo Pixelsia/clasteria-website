@@ -36,58 +36,37 @@ export type TodoItem = {
   body: string;
 };
 
+// Initial release: only destinations with usable, public-facing content.
 export const primaryNavItems = [
   { label: 'Home', to: '/', eyebrow: 'HOME' },
-  { label: 'プログラミング', to: '/codingcraft', eyebrow: 'CODINGCRAFT' },
   { label: '鬼ごっこ', to: '/onigokko', eyebrow: 'ONIGOKKO' },
   { label: 'かくれんぼ', to: '/kakurenbo', eyebrow: 'KAKURENBO' },
-  { label: 'リーダーボード', to: '/leaderboard', eyebrow: 'LEADERBOARD' },
-  { label: 'サポート', to: '/support', eyebrow: 'SUPPORT' },
   { label: 'ニュース', to: '/articles', eyebrow: 'NEWS' },
+  { label: 'お問い合わせ', to: '/support', eyebrow: 'SUPPORT' },
 ] satisfies SiteNavItem[];
 
-export const accountNavItems = [
-  { label: 'ログイン', to: '/login', eyebrow: 'LOGIN' },
-  { label: '購入・登録', to: '/register', eyebrow: 'REGISTER' },
-] satisfies SiteNavItem[];
+export const accountNavItems: SiteNavItem[] = [];
+export const siteNavItems = primaryNavItems;
 
-export const siteNavItems = [
-  ...primaryNavItems,
-  ...accountNavItems,
-] satisfies SiteNavItem[];
+export const supportEmail = 'support@pixelsia.net';
+export const supportDiscord = 'https://discord.gg/TwTPa4Yp4h';
 
 export const featureCards = [
   {
-    title: 'CodingCraft',
-    description: 'ブロックを用いたビジュアルプログラミングと Minecraft で、学習モードやサンドボックスを扱う学習コンテンツです。',
-    to: '/codingcraft',
-    image: '/images/clasteria/codingcraft.jpg',
-    icon: 'i-heroicons-code-bracket-square',
-    eyebrow: 'PROGRAMMING',
-  },
-  {
     title: '鬼ごっこ',
-    description: 'メインワールドから参加し、投票でルールとマップを決めて、鬼から制限時間まで逃げ切るミニゲームです。',
+    description: '追いかける、逃げきる、仲間を助ける。ルールごとに変わる駆け引きを、Minecraft の世界で。',
     to: '/onigokko',
     image: '/images/clasteria/minigame.jpg',
     icon: 'i-heroicons-bolt',
-    eyebrow: 'MINIGAME',
+    eyebrow: 'ONIGOKKO',
   },
   {
     title: 'かくれんぼ',
-    description: '逃走者がブロックに擬態して隠れ、鬼が制限時間内に捕獲を狙う Clasteria のミニゲームです。',
+    description: '見慣れたブロックが、誰かの隠れ場所かもしれない。風景に溶けこむ逃走者と、違和感を探す鬼の勝負。',
     to: '/kakurenbo',
     image: '/images/clasteria/clasteria-hero.jpg',
     icon: 'i-heroicons-cube-transparent',
-    eyebrow: 'HIDE AND SEEK',
-  },
-  {
-    title: 'リーダーボード',
-    description: '各ゲームのランキング Top10 を紹介する枠です。データソースと更新方法は未決のため、初期公開では TODO として表示します。',
-    to: '/leaderboard',
-    image: '/images/clasteria/home-main-visual.png',
-    icon: 'i-heroicons-trophy',
-    eyebrow: 'LEADERBOARD',
+    eyebrow: 'KAKURENBO',
   },
 ] satisfies FeatureCard[];
 
@@ -142,7 +121,7 @@ export const onigokkoRules = [
   },
   {
     title: 'バナナ鬼',
-    body: 'タッチされた逃走者はバナナ化し、逃走者 2 人のタッチで解除されます。',
+    body: 'タッチされた逃走者はバナナ化し、異なる逃走者 2 人のタッチで解除されます。',
     icon: 'i-heroicons-user-group',
   },
 ] satisfies InfoCard[];
@@ -160,7 +139,7 @@ export const onigokkoFlow = [
   },
   {
     title: '試合',
-    body: '鬼抽選後に逃走を開始し、残り 30 秒で生存プレイヤーに発光を付与します。',
+    body: '鬼抽選後に逃走を開始し、残り 30 秒で捕まっていない逃走者に発光を付与します。',
     icon: 'i-heroicons-play-circle',
   },
 ] satisfies InfoCard[];
@@ -183,7 +162,7 @@ export const kakurenboFlow = [
   },
   {
     title: 'リザルト',
-    body: '勝敗条件を満たすとゲーム終了処理へ入り、リザルト表示とログ保存を行います。',
+    body: '結果を確認して、再戦するかメインワールドへ戻ります。',
     icon: 'i-heroicons-flag',
   },
 ] satisfies InfoCard[];
@@ -232,16 +211,16 @@ export const supportTopics = [
 
 export const faqItems = [
   {
-    label: 'ログインや購入は使えますか',
-    content: 'ログインと購入・登録は README の指定どおり、初期公開では Coming soon として表示します。',
+    label: 'ゲームへの参加方法を知りたいです',
+    content: '現在の受付状況や参加方法については、お問い合わせ窓口へご連絡ください。このサイトではゲームの概要と基本ルールをご紹介しています。',
   },
   {
-    label: 'リーダーボードの順位は実データですか',
-    content: '現時点では実データではありません。データソース、集計期間、更新頻度が未決です。',
+    label: '不具合を報告するときは、何を伝えればよいですか',
+    content: 'ゲーム名、起きたこと、発生した日時、利用した環境をお知らせください。パスワードや認証コードは送らないでください。',
   },
   {
-    label: 'ニュースはどこから配信しますか',
-    content: 'この実装では既存の articles 機能を表示します。Pixelsia、Clasteria、Connectia の扱いは未決です。',
+    label: 'このサイトを見るためにアカウントは必要ですか',
+    content: 'ゲーム紹介やニュースは、ログインせずにご覧いただけます。',
   },
 ];
 
@@ -266,4 +245,4 @@ export const unresolvedItems = [
     title: 'TODO: ニュース',
     body: 'Pixelsia、Clasteria、Connectia のニュースを同一面で扱う範囲が未決です。',
   },
-] satisfies TodoItem[];
+] as const satisfies readonly TodoItem[];

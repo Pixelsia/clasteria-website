@@ -38,6 +38,25 @@ function toArticleMeta(item: ArticlesCollectionItem): ArticleMeta {
   };
 }
 
+function queryPublishedArticles(now: string) {
+  // 一覧・件数・直接 URL に同じ公開条件を適用し、未確認の記事は公開しない。
+  return queryCollection('articles')
+    .where('publicationStatus', '=', 'published')
+    .where('brand', '=', 'clasteria')
+    .where('publishedAt', '<=', now);
+}
+
+/**
+ * 一覧の表示件数に関係なく、公開済み記事すべての静的 HTML を生成対象にする。
+ * @remark サーバー側のページ処理から呼び出す。
+ */
+export async function prerenderPublishedArticleRoutes(): Promise<void> {
+  const articles = await queryPublishedArticles(new Date().toISOString())
+    .select('slug')
+    .all();
+  prerenderRoutes(articles.map(article => `/articles/${article.slug}`));
+}
+
 /**
  * 記事一覧を取得する。
  * @param options.page 現在のページ番号 (0-indexed)
@@ -52,15 +71,17 @@ export async function useArticlesList(options: {
   const { data: articlesList } = await useAsyncData(
     () => `articles?page=${toValue(page)}&limit=${toValue(limit)}`,
     // SSG なので、options のバリデーションは不要
-    () => Promise.all([
-      queryCollection('articles')
-        .where('publishedAt', '<=', new Date().toISOString())
-        .order('publishedAt', 'DESC')
-        .skip(toValue(page) * toValue(limit))
-        .limit(toValue(limit))
-        .all(),
-      queryCollection('articles').count(),
-    ]),
+    () => {
+      const now = new Date().toISOString();
+      return Promise.all([
+        queryPublishedArticles(now)
+          .order('publishedAt', 'DESC')
+          .skip(toValue(page) * toValue(limit))
+          .limit(toValue(limit))
+          .all(),
+        queryPublishedArticles(now).count(),
+      ]);
+    },
     {
       default: () => ({ articles: [], total: 0 }),
       // transform で整形することで、整形前のデータをペイロードに含めないようにできる
@@ -81,7 +102,7 @@ export async function useArticlesList(options: {
 export async function useArticle(slug: string): Promise<Ref<Article | null>> {
   const { data: article } = await useAsyncData(
     `articles/${slug}`,
-    () => queryCollection('articles').where('slug', '=', slug).first(),
+    () => queryPublishedArticles(new Date().toISOString()).where('slug', '=', slug).first(),
     {
       default: () => null,
       // transform で整形することで、整形前のデータをペイロードに含めないようにできる

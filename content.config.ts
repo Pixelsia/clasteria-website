@@ -17,6 +17,9 @@ export default defineContentConfig({
           title: z.string(),
           author: z.string().default('Pixelsia'),
           publishedAt: z.coerce.date(),
+          // 既存記事も、内容・日時・対象ブランドの確認が済むまでは公開しない。
+          publicationStatus: z.enum(['draft', 'published']).default('draft'),
+          brand: z.enum(['clasteria', 'pixelsia', 'connectia', 'unconfirmed']).default('unconfirmed'),
           tags: z.array(z.string()).default([]),
           hotDays: z.number().int().default(7),
         }),

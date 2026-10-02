@@ -1,11 +1,5 @@
-<script setup lang="ts">
-const heroRef = useTemplateRef('hero');
-const { y } = useScroll(window, { behavior: 'smooth' });
-</script>
-
 <template>
   <section
-    ref="hero"
     class="relative isolate overflow-hidden bg-neutral-950 text-white"
   >
     <NuxtPicture
@@ -23,43 +17,43 @@ const { y } = useScroll(window, { behavior: 'smooth' });
           CLASTERIA OFFICIAL
         </p>
         <h1 class="text-5xl font-black leading-tight md:text-7xl">
-          遊びと学びが<br>
-          同じ世界で<br>
-          <span class="text-primary-300">つながる。</span>
+          遊びから、<br>
+          つながる世界へ。<br>
+          <span class="text-primary-300">Clasteria</span>
         </h1>
         <p class="max-w-3xl text-lg leading-9 text-neutral-100">
-          Minecraft に Pixelsia の世界を作り、ミニゲームと CodingCraft を通じて自分だけの役割を持てる場所へつなぎます。
+          見つける楽しさ。逃げきるスリル。<br>
+          Minecraft の世界を舞台に、みんなで遊ぶミニゲーム。
         </p>
         <div class="flex flex-wrap justify-center gap-3">
           <UButton
-            to="/codingcraft"
+            to="#games"
             color="primary"
             trailing-icon="i-heroicons-arrow-right"
             size="xl"
           >
-            CodingCraft
+            ゲームを知る
           </UButton>
           <UButton
-            to="/onigokko"
+            to="/articles"
             color="neutral"
             variant="outline"
             size="xl"
             class="site-glass-action"
           >
-            ミニゲームを見る
+            お知らせを見る
           </UButton>
         </div>
-        <button
+        <a
+          href="#games"
           class="flex w-fit items-center gap-3 text-sm font-black uppercase tracking-widest text-neutral-200 hover:text-primary-200"
-          type="button"
-          @click="y = heroRef!.offsetTop + heroRef!.offsetHeight"
         >
           <UIcon
             name="i-heroicons-chevron-down"
             class="size-5"
           />
           Scroll
-        </button>
+        </a>
       </div>
     </UContainer>
   </section>

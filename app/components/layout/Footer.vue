@@ -3,16 +3,12 @@ import type { FooterColumn } from '@nuxt/ui';
 
 const columns: FooterColumn[] = [
   {
-    label: 'サイト',
-    children: primaryNavItems.slice(0, 4),
+    label: 'ゲーム情報',
+    children: primaryNavItems.filter(item => ['/onigokko', '/kakurenbo'].includes(item.to)),
   },
   {
-    label: 'コンテンツ',
-    children: primaryNavItems.slice(4),
-  },
-  {
-    label: 'アカウント',
-    children: accountNavItems,
+    label: 'Clasteria',
+    children: primaryNavItems.filter(item => ['/', '/articles', '/support'].includes(item.to)),
   },
 ];
 </script>
@@ -45,7 +41,7 @@ const columns: FooterColumn[] = [
                 <NuxtImg
                   src="/images/pixelsia_header_logo.png"
                   alt="Pixelsia"
-                  class="h-6 w-auto object-contain md:h-7"
+                  class="h-6 w-auto object-contain brightness-0 invert md:h-7"
                 />
                 <span
                   class="h-6 w-px bg-neutral-700"
@@ -54,7 +50,7 @@ const columns: FooterColumn[] = [
                 <span class="text-sm font-bold tracking-wide text-neutral-300 md:text-base">Clasteria</span>
               </div>
               <p class="mt-4 max-w-xs text-sm leading-7 text-neutral-300">
-                Minecraft に Pixelsia の世界を作り、遊びと学びを同じ場所で扱う公式サイトです。
+                Minecraft の世界で、遊びを通じてつながる。Clasteria のゲーム情報とお知らせをお届けします。
               </p>
             </div>
           </template>
@@ -68,7 +64,7 @@ const columns: FooterColumn[] = [
           <NuxtImg
             src="/images/pixelsia_header_logo.png"
             alt="Pixelsia"
-            class="h-6 w-auto object-contain opacity-80 md:h-7"
+            class="h-6 w-auto object-contain opacity-80 brightness-0 invert md:h-7"
           />
           <span
             class="h-6 w-px bg-neutral-700"

@@ -18,12 +18,12 @@ useSeoMeta({
     >
       <template #actions>
         <UButton
-          to="/leaderboard"
+          to="#how-to-play"
           color="primary"
-          trailing-icon="i-heroicons-trophy"
+          trailing-icon="i-heroicons-arrow-down"
           size="xl"
         >
-          ランキングを見る
+          遊び方を見る
         </UButton>
         <UButton
           to="/support"
@@ -36,15 +36,18 @@ useSeoMeta({
       </template>
     </SitePageHero>
 
+    <GameAvailability />
+
     <UContainer
+      id="how-to-play"
       as="section"
-      class="py-20"
+      class="scroll-mt-24 py-20"
     >
       <SiteSectionHeader
         class="site-reveal"
         eyebrow="HOW TO PLAY"
-        title="参加から試合終了まで"
-        description="鬼ごっこ仕様の overview と spec にある、参加、投票、鬼抽選、試合、リザルトまでの流れを要約しています。"
+        title="予定している遊び方"
+        description="まずはゲームの流れをチェック。ルールとマップを選んだら、追いかけっこの始まりです。"
       />
 
       <div class="mt-12 grid gap-6 md:grid-cols-3">

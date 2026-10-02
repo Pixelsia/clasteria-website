@@ -19,6 +19,15 @@ defineOgImage(useResolvedOgImage(article.value.ogImage));
 
 <template>
   <UPage as="article">
+    <UButton
+      to="/articles"
+      variant="ghost"
+      color="primary"
+      icon="i-heroicons-arrow-left"
+      class="mt-8"
+    >
+      ニュース一覧へ戻る
+    </UButton>
     <UPageHeader
       :headline="formatDate(article.publishedAt)"
       :title="article.title"

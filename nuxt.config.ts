@@ -93,7 +93,7 @@ export default defineNuxtConfig({
 
   site: {
     url: 'http://localhost:3000',
-    name: '[PREVIEW] Clasteria',
+    name: 'Clasteria',
     defaultLocale: 'ja_JP',
   },
   ogImage: {
@@ -108,6 +108,13 @@ export default defineNuxtConfig({
   },
 
   hooks: {
+    // Keep the prototype source for later work without registering unavailable routes.
+    'pages:extend': (pages) => {
+      const excluded = new Set(['/codingcraft', '/leaderboard', '/login', '/register']);
+      for (let index = pages.length - 1; index >= 0; index--) {
+        if (excluded.has(pages[index]!.path)) pages.splice(index, 1);
+      }
+    },
     'build:before': async () => {
       await ensureContentSymlink();
     },

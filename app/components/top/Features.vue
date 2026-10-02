@@ -1,13 +1,14 @@
 <template>
   <UContainer
+    id="games"
     as="section"
-    class="py-16 md:py-20"
+    class="scroll-mt-24 py-16 md:py-20"
   >
     <SiteSectionHeader
       class="site-reveal"
-      eyebrow="CONTENTS"
-      title="Clasteria の主要コンテンツ"
-      description="HP 仕様書のページ構成に沿って、プログラミングコンテンツ、鬼ごっこ、かくれんぼ、リーダーボードへ案内します。"
+      eyebrow="OUR GAMES"
+      title="いつもの遊びを、新しい世界で。"
+      description="鬼ごっことかくれんぼ。Clasteria で作っているゲームの世界と、基本の遊び方をご紹介します。"
       align="center"
     />
 
@@ -16,7 +17,7 @@
         v-for="feature in featureCards"
         :key="feature.title"
         :to="feature.to"
-        class="site-glass-panel site-reveal group grid min-h-80 transition-colors hover:bg-primary-50 md:grid-cols-2"
+        class="site-glass-panel site-reveal group grid min-h-80 transition-colors hover:bg-primary-50 lg:grid-cols-2"
       >
         <NuxtPicture
           :src="feature.image"

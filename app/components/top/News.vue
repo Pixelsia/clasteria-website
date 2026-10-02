@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { homeSectionTemplates } from '~/utils/homeDocument';
+withDefaults(defineProps<{ content?: Record<string, string> }>(), {
+  content: () => ({ ...homeSectionTemplates.news.content }),
+});
+
 const articlesList = await useArticlesList({ limit: 2 });
 
 const displayArticles = computed(() => articlesList.value.articles.map(article => ({
@@ -17,9 +22,9 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
     <div class="site-reveal rounded-lg border border-neutral-200 bg-neutral-50 p-6 md:p-10">
       <div class="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <SiteSectionHeader
-          eyebrow="NEWS"
-          title="ニュース"
-          description="Clasteria からのお知らせをお届けします。"
+          :eyebrow="content.eyebrow!"
+          :title="content.title!"
+          :description="content.description!"
         />
         <UButton
           to="/articles"
@@ -27,7 +32,7 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
           trailing-icon="i-heroicons-arrow-right"
           variant="ghost"
         >
-          すべて見る
+          {{ content.primaryLabel }}
         </UButton>
       </div>
 

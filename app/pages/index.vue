@@ -1,5 +1,6 @@
 <script setup lang="ts">
-useSiteReveal();
+const { public: { visualEditorEnabled } } = useRuntimeConfig();
+const document = createDefaultHomeDocument();
 
 useSeoMeta({
   title: 'Home',
@@ -8,16 +9,15 @@ useSeoMeta({
 </script>
 
 <template>
-  <article class="-mt-20">
-    <TopHero />
-    <TopAbout />
-    <TopNews />
-    <SiteCtaBand
-      eyebrow="CONTACT"
-      title="知りたいこと、困ったこと。"
-      description="ゲームへの参加やご質問、不具合のご報告はこちらから。"
-      primary-label="お問い合わせ"
-      primary-to="/support"
-    />
-  </article>
+  <div>
+    <TopHomeDocument :document="document" />
+    <UButton
+      v-if="visualEditorEnabled"
+      to="/editor"
+      class="fixed right-4 bottom-4 z-40"
+      icon="i-heroicons-pencil-square"
+    >
+      Home を編集
+    </UButton>
+  </div>
 </template>

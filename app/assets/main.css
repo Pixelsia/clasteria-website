@@ -202,3 +202,51 @@
   }
 }
 /* doiuse-enable css-has */
+
+/* Explicit document values override the component's default utility classes. */
+.home-section > section {
+  background-color: var(--home-background);
+}
+
+.home-section p[class*="tracking-widest"],
+.home-section-hero h1 > span:last-child {
+  color: var(--home-accent);
+}
+
+.home-section-contact > section {
+  background:
+    radial-gradient(circle at 84% 18%, rgb(0 166 62 / 26%), transparent 24rem),
+    radial-gradient(circle at 8% 92%, rgb(0 130 54 / 18%), transparent 18rem),
+    linear-gradient(135deg, var(--home-background), var(--home-background) 58%, var(--color-slate-900));
+}
+
+.home-spacing-compact > section {
+  padding-block: 2rem;
+}
+
+.home-spacing-roomy > section {
+  padding-block: 6rem;
+}
+
+.home-section-hero > section,
+.home-section-contact > section {
+  padding-block: 0;
+}
+
+.home-spacing-compact.home-section-hero > section > div:last-child {
+  min-height: 32rem;
+  padding-block: 4rem;
+}
+
+.home-spacing-roomy.home-section-hero > section > div:last-child {
+  min-height: 100vh;
+  padding-block: 8rem;
+}
+
+.home-spacing-compact.home-section-contact > section > div:last-child {
+  padding-block: 2rem;
+}
+
+.home-spacing-roomy.home-section-contact > section > div:last-child {
+  padding-block: 6rem;
+}

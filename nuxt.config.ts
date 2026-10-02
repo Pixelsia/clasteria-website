@@ -6,6 +6,8 @@ import { insertWbrToNodes, insertWbrToContent } from './scripts/prebuild-typogra
 import { ensureContentSymlink, generateContentSlug, detectContentOgImage, resolveContentImagePaths, contentHeading } from './scripts/prebuild-content';
 
 const isDev = process.env.NODE_ENV === 'development';
+// Editing is available in branch previews and explicit local builds, never Pages main.
+const visualEditorEnabled = process.env.CF_PAGES_BRANCH !== 'main' && (isDev || Boolean(process.env.CF_PAGES_BRANCH) || process.env.NUXT_VISUAL_EDITOR === 'true');
 const siteUrl = process.env.NUXT_SITE_URL || 'http://localhost:3000';
 const maintenanceUrl = resolveMaintenanceUrl(
   process.env.NUXT_PUBLIC_MAINTENANCE_URL || defaultMaintenanceUrl,
@@ -35,7 +37,7 @@ export default defineNuxtConfig({
   ssr: true,
 
   runtimeConfig: {
-    public: { maintenanceUrl },
+    public: { maintenanceUrl, visualEditorEnabled },
   },
 
   devtools: {
@@ -111,9 +113,13 @@ export default defineNuxtConfig({
     fonts: ['Noto+Sans+JP:400', 'Noto+Sans+JP:700'],
   },
 
+  robots: { disallow: ['/editor', '/editor/'] },
+  sitemap: { exclude: ['/editor', '/editor/**'] },
+
   nitro: {
     prerender: {
       crawlLinks: true,
+      routes: visualEditorEnabled ? ['/editor', '/editor/preview'] : [],
       failOnError: true,
       ignore: unpublishedRouteVariants,
     },
@@ -123,7 +129,7 @@ export default defineNuxtConfig({
     // Keep the prototype source for later work without registering unavailable routes.
     'pages:extend': (pages) => {
       for (let index = pages.length - 1; index >= 0; index--) {
-        if (isUnpublishedRoute(pages[index]!.path)) pages.splice(index, 1);
+        if (isUnpublishedRoute(pages[index]!.path) || (!visualEditorEnabled && pages[index]!.path.startsWith('/editor'))) pages.splice(index, 1);
       }
     },
     'nitro:init': (nitro) => {

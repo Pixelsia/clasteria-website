@@ -2,6 +2,7 @@
 import { h, render, Suspense } from 'vue';
 import type { Component, Editor } from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
+import { configureHomeEditorCanvas } from '~/utils/editorCanvas';
 import HomeSectionView from '~/components/top/HomeSection.vue';
 import {
   createDefaultHomeDocument, createHomeSection, homeDraftStorageKey, homePreviewStorageKey, homeFieldLabels,
@@ -18,6 +19,7 @@ const fileInput = useTemplateRef('fileInput');
 const selected = shallowRef<HomeSection>();
 const sectionList = ref<HomeSection[]>([]);
 const ready = ref(false);
+const canvasReady = ref(false);
 const status = ref('エディターを読み込んでいます…');
 const error = ref('');
 const canUndo = ref(false);
@@ -28,6 +30,7 @@ let editor: Editor | undefined;
 let syncing = false;
 let disposed = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
+let canvasTimer: ReturnType<typeof setTimeout> | undefined;
 const destinations = [
   { label: 'Home', value: '/' }, { label: 'ニュース', value: '/articles' }, { label: 'お問い合わせ', value: '/support' },
   { label: 'CodingCraft（外部）', value: 'https://codingcraft.pixelsia.net/login' },
@@ -179,7 +182,7 @@ onMounted(async () => {
     const { default: grapesjs } = await import('grapesjs');
     if (disposed || !canvas.value) return;
     editor = grapesjs.init({
-      container: canvas.value, height: '100%', width: 'auto', fromElement: false,
+      container: canvas.value, height: '100%', width: 'auto', fromElement: false, autorender: false,
       storageManager: false, telemetry: false, noticeOnUnload: false,
       panels: { defaults: [] },
       blockManager: { appendTo: blocks.value!, custom: false },
@@ -232,14 +235,14 @@ onMounted(async () => {
         select: true,
       });
     }
-    editor.on('canvas:frame:load', () => {
-      const frameDocument = editor!.Canvas.getDocument();
-      for (const style of document.querySelectorAll('style')) frameDocument.head.appendChild(style.cloneNode(true));
-      const style = frameDocument.createElement('style');
-      style.textContent = '[data-editor-section] > * { pointer-events: none; } .site-reveal { transform: none !important; opacity: 1 !important; } body { margin: 0; }';
-      frameDocument.head.appendChild(style);
-      frameDocument.documentElement.lang = 'ja';
+    configureHomeEditorCanvas(editor, document);
+    editor.on('canvas:frame:load:body', () => {
+      canvasReady.value = true;
+      clearTimeout(canvasTimer);
     });
+    canvasTimer = setTimeout(() => {
+      if (!canvasReady.value) error.value = 'キャンバスを表示できませんでした。下書きを書き出してから、ページを再読み込みしてください。';
+    }, 10_000);
     editor.on('component:add', (component: Component) => {
       if (syncing) return;
       if (editor!.getComponents().length > maxHomeSections) {
@@ -257,6 +260,8 @@ onMounted(async () => {
     }
     catch { error.value = '保存済みの下書きを読み込めませんでした。公開版を表示しています。'; }
     applyDocument(initial);
+    // Register the frame lifecycle handlers before an iframe can start loading.
+    editor.render();
     ready.value = true;
   }
   catch { error.value = 'エディターを読み込めませんでした。ページを再読み込みしてください。'; }
@@ -264,6 +269,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   disposed = true;
   clearTimeout(saveTimer);
+  clearTimeout(canvasTimer);
   if (ready.value) saveDraft();
   editor?.destroy();
 });
@@ -489,6 +495,13 @@ onBeforeUnmount(() => {
             </UButton>
           </div>
         </div>
+        <p
+          v-if="!canvasReady"
+          class="border-b border-neutral-200 bg-white px-4 py-3 text-sm"
+          role="status"
+        >
+          キャンバスを準備しています…
+        </p>
         <div
           ref="canvas"
           class="editor-canvas"

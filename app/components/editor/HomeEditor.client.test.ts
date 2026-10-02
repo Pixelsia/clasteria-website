@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { NodeTypes } from '@vue/compiler-core';
+import type { ElementNode, RootNode } from '@vue/compiler-core';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { parse } from 'vue/compiler-sfc';
 import * as documents from '../../utils/homeDocument';
 import * as drafts from '../../utils/homeDraftClient';
 import type { HomeDocument, HomeSection } from '../../utils/homeDocument';
@@ -17,6 +20,9 @@ type EditorApi = {
   status: Ref<string>;
   error: Ref<string>;
   originalBackup: Ref<string | undefined>;
+  noticeVisible: Ref<boolean>;
+  dismissNotice: () => Promise<void>;
+  showNotice: () => Promise<void>;
   saveServerDraft: () => Promise<void>;
   checkServerDraft: (automatic?: boolean, load?: boolean) => Promise<void>;
   confirmServerLoad: () => void;
@@ -38,9 +44,28 @@ const source = readFileSync(new URL('./HomeEditor.client.vue', import.meta.url),
 const script = source.match(/<script setup lang="ts">([\s\S]*?)<\/script>/)![1]!;
 const executable = ts.transpileModule(`${script}\nexport const api = {
   draftState, serverBusy, serverError, serverDirty, pendingServerLoad, serverStatus, status, error, originalBackup,
+  noticeVisible, dismissNotice, showNotice,
   saveServerDraft, checkServerDraft, confirmServerLoad, cancelServerLoad,
   changeField, resetDraft, importDraft, documentFromEditor, downloadOriginalBackup,
 };`, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+
+type TemplateElement = { element: ElementNode; ancestors: ElementNode[] };
+
+function templateElements(node: RootNode | ElementNode, ancestors: ElementNode[] = []): TemplateElement[] {
+  return node.children.flatMap(child => child.type === NodeTypes.ELEMENT
+    ? [{ element: child, ancestors }, ...templateElements(child, [...ancestors, child])]
+    : []);
+}
+
+function noticeControlled({ element, ancestors }: TemplateElement) {
+  return [...ancestors, element].some(node => node.props.some(prop => prop.type === NodeTypes.DIRECTIVE
+    && ['if', 'show'].includes(prop.name) && /\bnoticeVisible\b/.test(prop.exp?.loc.source ?? '')));
+}
+
+function ifCondition(element: ElementNode) {
+  const directive = element.props.find(prop => prop.type === NodeTypes.DIRECTIVE && prop.name === 'if');
+  return directive?.type === NodeTypes.DIRECTIVE ? directive.exp?.loc.source : undefined;
+}
 
 async function flush() {
   for (let index = 0; index < 20; index++) await Promise.resolve();
@@ -49,9 +74,9 @@ async function flush() {
 async function mountEditor(
   local?: HomeDocument,
   baseline?: ServerHomeDraft,
-  recovery: { rawLocal?: string; existing?: string; failWrite?: boolean } = {},
+  recovery: { rawLocal?: string; existing?: string; failWrite?: boolean; storage?: ReadonlyMap<string, string> } = {},
 ) {
-  const storage = new Map<string, string>();
+  const storage = new Map(recovery.storage);
   if (local) {
     storage.set(documents.homeDraftStorageKey, documents.serializeHomeDocument(local));
     if (baseline) {
@@ -78,6 +103,7 @@ async function mountEditor(
   });
   let components: ReturnType<typeof model>[] = [];
   let selected: ReturnType<typeof model> | undefined;
+  const editorRefresh = vi.fn();
   const editor = {
     getComponents: () => components,
     getSelected: () => selected,
@@ -99,6 +125,7 @@ async function mountEditor(
     Keymaps: { remove: () => {} },
     Blocks: { add: () => {} },
     render: () => emit('canvas:frame:load:body'),
+    refresh: editorRefresh,
     destroy: () => {},
   };
   vi.stubGlobal('document', {
@@ -128,11 +155,13 @@ async function mountEditor(
     options.signal?.addEventListener('abort', () => reject(new Error('Aborted')));
   }));
   const ref = <T>(value?: T) => ({ value });
+  const noticeToggleFocus = vi.fn();
   const bindings = {
     getCurrentInstance: () => ({ appContext: {} }),
-    useTemplateRef: () => ref({}),
+    useTemplateRef: (name: string) => ref(name === 'noticeToggle' ? { focus: noticeToggleFocus } : {}),
     shallowRef: ref,
     ref,
+    nextTick: () => Promise.resolve(),
     computed: <T>(get: () => T) => ({ get value() { return get(); } }),
     onMounted: (callback: () => Promise<void>) => { mounted = callback; },
     onBeforeUnmount: (callback: () => void) => { unmounted = callback; },
@@ -162,7 +191,7 @@ async function mountEditor(
     await flush();
   };
   return {
-    api: exported.api, requests, storage, reply, downloads,
+    api: exported.api, requests, storage, reply, downloads, noticeToggleFocus, editorRefresh,
     pagehide: () => pageEvents.get('pagehide')?.(), unmount: () => unmounted(),
   };
 }
@@ -178,6 +207,132 @@ afterEach(() => {
   vi.clearAllTimers();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+describe('dismissible editor notice', () => {
+  it('starts visible and returns focus to the toolbar control after dismissal', async () => {
+    const editor = await mountEditor();
+    expect(editor.api.noticeVisible.value).toBe(true);
+    const dismissal = editor.api.dismissNotice();
+    expect(editor.api.noticeVisible.value).toBe(false);
+    expect(editor.noticeToggleFocus).not.toHaveBeenCalled();
+    expect(editor.editorRefresh).not.toHaveBeenCalled();
+    await dismissal;
+    expect(editor.noticeToggleFocus).toHaveBeenCalledOnce();
+    expect(editor.editorRefresh).toHaveBeenCalledExactlyOnceWith({ tools: true });
+    editor.unmount();
+  });
+
+  it('dismisses and reopens without changing the draft, baseline, storage, or requests', async () => {
+    const editor = await mountEditor();
+    await editor.reply(draft());
+    editor.api.changeField('title', '案内を閉じても残す編集');
+    await vi.advanceTimersByTimeAsync(300);
+    const document = structuredClone(editor.api.documentFromEditor());
+    const state = structuredClone(editor.api.draftState.value);
+    const baseline = editor.api.draftState.value.base;
+    const storage = new Map(editor.storage);
+    const requests = editor.requests.length;
+    const status = editor.api.status.value;
+    const serverStatus = editor.api.serverStatus.value;
+    const expectUnchanged = () => {
+      expect(editor.api.documentFromEditor()).toEqual(document);
+      expect(editor.api.draftState.value).toEqual(state);
+      expect(editor.api.draftState.value.base).toBe(baseline);
+      expect(editor.api.serverDirty.value).toBe(true);
+      expect(editor.api.status.value).toBe(status);
+      expect(editor.api.serverStatus.value).toBe(serverStatus);
+      expect(editor.storage).toEqual(storage);
+      expect(editor.requests).toHaveLength(requests);
+    };
+
+    await editor.api.dismissNotice();
+    expect(editor.api.noticeVisible.value).toBe(false);
+    expect(editor.editorRefresh).toHaveBeenCalledExactlyOnceWith({ tools: true });
+    expectUnchanged();
+    const reopening = editor.api.showNotice();
+    expect(editor.api.noticeVisible.value).toBe(true);
+    expect(editor.editorRefresh).toHaveBeenCalledTimes(1);
+    await reopening;
+    expect(editor.editorRefresh).toHaveBeenCalledTimes(2);
+    expect(editor.editorRefresh).toHaveBeenLastCalledWith({ tools: true });
+    expectUnchanged();
+    editor.unmount();
+  });
+
+  it('shows the notice on a fresh mount with the same browser storage', async () => {
+    const editor = await mountEditor();
+    await editor.reply(draft());
+    await editor.api.dismissNotice();
+    editor.unmount();
+    const reopened = await mountEditor(undefined, undefined, { storage: editor.storage });
+    expect(reopened.api.noticeVisible.value).toBe(true);
+    expect(reopened.api.documentFromEditor()).toEqual(draft().document);
+    reopened.unmount();
+  });
+
+  it.each([401, 409])('retains server errors when the notice is dismissed (HTTP %i)', async (status) => {
+    const editor = await mountEditor();
+    await editor.reply(null, status);
+    const error = editor.api.serverError.value;
+    expect(error).toBeDefined();
+    await editor.api.dismissNotice();
+    expect(editor.api.serverError.value).toBe(error);
+    editor.unmount();
+  });
+
+  it('keeps a pending replacement confirmation actionable after dismissal', async () => {
+    const editor = await mountEditor(draft('残している編集').document);
+    await editor.reply(draft());
+    const load = editor.api.checkServerDraft(false, true);
+    await editor.reply(draft());
+    await load;
+    const confirmation = editor.api.pendingServerLoad.value;
+    expect(confirmation).toBeDefined();
+    await editor.api.dismissNotice();
+    expect(editor.api.pendingServerLoad.value).toBe(confirmation);
+    editor.api.confirmServerLoad();
+    expect(editor.api.documentFromEditor()).toEqual(draft().document);
+    expect(editor.api.pendingServerLoad.value).toBeUndefined();
+    editor.unmount();
+  });
+
+  it('hides both routine bands while retaining accessible controls and critical guidance', () => {
+    const { descriptor, errors } = parse(source);
+    expect(errors).toEqual([]);
+    const elements = templateElements(descriptor.template!.ast!);
+    const routineBands = elements.filter(({ element }) => element.props.some(prop => prop.type === NodeTypes.ATTRIBUTE
+      && ((prop.name === 'class' && prop.value?.content.split(/\s+/).includes('editor-notice'))
+        || (prop.name === 'aria-label' && prop.value?.content === 'サーバーの下書き保存'))));
+    expect(routineBands).toHaveLength(2);
+    for (const { element, ancestors } of routineBands) {
+      expect([...ancestors, element].some(node => ifCondition(node) === 'noticeVisible')).toBe(true);
+    }
+    for (const binding of ['status', 'serverStatus', 'draftState.base.revision']) {
+      const statuses = routineBands.flatMap(({ element }) => templateElements(element))
+        .filter(({ element }) => element.children.some(child => child.type === NodeTypes.INTERPOLATION
+          && (binding === 'status' ? child.content.loc.source.trim() === binding : child.content.loc.source.includes(binding))));
+      expect(statuses.length, `Missing routine status: ${binding}`).toBeGreaterThan(0);
+    }
+
+    const toggle = elements.find(({ element }) => element.props.some(prop => prop.type === NodeTypes.ATTRIBUTE
+      && prop.name === 'ref' && prop.value?.content === 'noticeToggle'));
+    expect(toggle).toBeDefined();
+    expect(noticeControlled(toggle!)).toBe(false);
+    expect(toggle!.element.props.some(prop => prop.type === NodeTypes.DIRECTIVE && prop.name === 'bind'
+      && prop.arg?.loc.source === 'aria-expanded' && prop.exp?.loc.source === 'noticeVisible')).toBe(true);
+    const close = elements.find(({ element }) => element.props.some(prop => prop.type === NodeTypes.DIRECTIVE
+      && prop.name === 'on' && prop.arg?.loc.source === 'click' && prop.exp?.loc.source === 'dismissNotice'));
+    expect(close).toBeDefined();
+    expect(close!.element.props.some(prop => prop.type === NodeTypes.ATTRIBUTE
+      && prop.name === 'aria-label' && !!prop.value?.content)).toBe(true);
+
+    for (const condition of ['error', 'serverError', 'pendingServerLoad', 'saveRequiresLoad && !serverError', 'originalBackup !== undefined']) {
+      const guidance = elements.find(({ element }) => ifCondition(element) === condition);
+      expect(guidance, `Missing critical guidance: ${condition}`).toBeDefined();
+      expect(noticeControlled(guidance!), `Notice dismissal hides critical guidance: ${condition}`).toBe(false);
+    }
+  });
 });
 
 describe('Home editor server save/load orchestration', () => {

@@ -24,6 +24,8 @@ const canvas = useTemplateRef('canvas');
 const blocks = useTemplateRef('blocks');
 const layers = useTemplateRef('layers');
 const fileInput = useTemplateRef('fileInput');
+const noticeToggle = useTemplateRef<HTMLButtonElement>('noticeToggle');
+const noticeVisible = ref(true);
 const selected = shallowRef<HomeSection>();
 const sectionList = ref<HomeSection[]>([]);
 const ready = ref(false);
@@ -66,6 +68,19 @@ const destinations = [
   { label: 'CodingCraft（外部）', value: 'https://codingcraft.pixelsia.net/login' },
   { label: 'Discord（外部）', value: 'https://discord.gg/TwTPa4Yp4h' }, { label: 'サポートメール', value: 'mailto:support@pixelsia.net' },
 ];
+
+async function dismissNotice() {
+  noticeVisible.value = false;
+  await nextTick();
+  if (disposed) return;
+  editor?.refresh({ tools: true });
+  noticeToggle.value?.focus();
+}
+async function showNotice() {
+  noticeVisible.value = true;
+  await nextTick();
+  if (!disposed) editor?.refresh({ tools: true });
+}
 
 function uniqueId() {
   return `section-${crypto.randomUUID()}`;
@@ -515,6 +530,29 @@ onBeforeUnmount(() => {
         <h1 class="text-xl font-black">
           Home を編集
         </h1>
+        <div class="mt-1 flex flex-wrap items-center gap-3 text-xs">
+          <span
+            role="status"
+            :aria-live="noticeVisible ? 'off' : 'polite'"
+            class="font-bold"
+          >
+            {{ serverBusy === 'saving' ? 'サーバーに保存中…' : serverDirty ? 'サーバー未保存' : 'サーバー保存済み' }}
+            <span
+              v-if="!noticeVisible"
+              class="sr-only"
+            >{{ serverStatus }}</span>
+          </span>
+          <button
+            ref="noticeToggle"
+            type="button"
+            aria-controls="editor-save-notice"
+            :aria-expanded="noticeVisible"
+            class="rounded px-1 py-1 text-neutral-600 underline hover:text-primary-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+            @click="noticeVisible ? dismissNotice() : showNotice()"
+          >
+            {{ noticeVisible ? '保存の案内を閉じる' : '保存の案内を表示' }}
+          </button>
+        </div>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <UButton
@@ -590,35 +628,57 @@ onBeforeUnmount(() => {
         @change="importDraft"
       >
     </header>
-    <div class="editor-notice">
-      <p>編集中の内容はこのブラウザーに自動保存されます。「下書きを保存」でサーバーにも保存できます。保存・読み込みでは公開サイトは変わりません。JSON でも保管できます。</p>
-      <p
-        role="status"
-        aria-live="polite"
-        class="font-bold"
-      >
-        {{ status }}
-      </p>
-    </div>
-    <section
-      class="border-b border-neutral-200 bg-white px-5 py-3 text-sm"
-      aria-label="サーバーの下書き保存"
+    <div
+      v-if="noticeVisible"
+      id="editor-save-notice"
+      role="region"
+      class="relative"
+      aria-label="保存の案内"
     >
-      <div
-        role="status"
-        aria-live="polite"
+      <button
+        type="button"
+        aria-label="保存の案内を閉じる"
+        class="absolute right-3 top-2 z-10 flex h-9 w-9 items-center justify-center rounded text-xl text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
+        @click="dismissNotice"
       >
-        <p class="font-bold">
-          {{ serverDirty ? 'サーバーに未保存の変更があります' : 'この内容はサーバーに保存済みです' }}
-        </p>
-        <p>{{ serverBusy === 'checking' ? 'サーバーの下書きを確認しています…' : serverStatus }}</p>
+        <span aria-hidden="true">×</span>
+      </button>
+      <div class="editor-notice">
+        <p>編集中の内容はこのブラウザーに自動保存されます。「下書きを保存」でサーバーにも保存できます。保存・読み込みでは公開サイトは変わりません。JSON でも保管できます。</p>
         <p
-          v-if="draftState.base"
-          class="mt-1 text-xs text-neutral-600"
+          role="status"
+          aria-live="polite"
+          class="font-bold"
         >
-          読み込み・保存済みのリビジョン: {{ draftState.base.revision }} / {{ serverSavedAt }}
+          {{ status }}
         </p>
       </div>
+      <section
+        class="border-b border-neutral-200 bg-white px-5 py-3 text-sm"
+        aria-label="サーバーの下書き保存"
+      >
+        <div
+          role="status"
+          aria-live="polite"
+        >
+          <p class="font-bold">
+            {{ serverDirty ? 'サーバーに未保存の変更があります' : 'この内容はサーバーに保存済みです' }}
+          </p>
+          <p>{{ serverBusy === 'checking' ? 'サーバーの下書きを確認しています…' : serverStatus }}</p>
+          <p
+            v-if="draftState.base"
+            class="mt-1 text-xs text-neutral-600"
+          >
+            読み込み・保存済みのリビジョン: {{ draftState.base.revision }} / {{ serverSavedAt }}
+          </p>
+        </div>
+      </section>
+    </div>
+    <section
+      v-if="saveRequiresLoad || serverError || pendingServerLoad"
+      class="border-b border-neutral-200 bg-white px-5 py-3 text-sm"
+      aria-label="下書き保存の確認・エラー"
+    >
       <p
         v-if="saveRequiresLoad && !serverError"
         class="mt-2 text-amber-800"
@@ -1019,7 +1079,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 1px solid #d1d5db;
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 3.5rem 0.75rem 1.25rem;
   font-size: 0.75rem;
   line-height: 1.75;
   }

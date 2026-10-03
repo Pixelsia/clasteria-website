@@ -16,10 +16,11 @@ withDefaults(defineProps<{ content?: Record<string, string>; aboutId?: string; i
       :provider="imageProvider"
       :alt="content.imageAlt"
       class="absolute inset-0 -z-10 block size-full"
-      :img-attrs="{ class: 'size-full object-cover opacity-45' }"
+      :img-attrs="{ class: 'size-full object-cover opacity-75' }"
       loading="eager"
     />
-    <div class="absolute inset-0 -z-10 bg-gradient-to-b from-neutral-950/70 via-neutral-950/55 to-neutral-950/80" />
+    <!-- Keep the landscape visible while retaining contrast behind the centered copy. -->
+    <div class="absolute inset-0 -z-10 bg-gradient-to-b from-neutral-950/55 via-neutral-950/40 to-neutral-950/65" />
 
     <UContainer class="flex min-h-screen items-center justify-center py-24">
       <div class="site-reveal mx-auto flex max-w-5xl flex-col items-center gap-7 text-center">

@@ -168,6 +168,11 @@ try {
       });
       await image.evaluate(element => element.decode());
       assert.deepEqual(await image.evaluate(element => [element.naturalWidth, element.naturalHeight]), [1920, 1009]);
+      if (hero.kind === 'hero') {
+        assert.equal(await image.evaluate(element => getComputedStyle(element).opacity), '0.75', 'Home retains more of the selected image');
+        const overlay = image.locator('xpath=ancestor::section').locator(':scope > .bg-gradient-to-b');
+        assert.match(await overlay.getAttribute('class'), /from-neutral-950\/55 via-neutral-950\/40 to-neutral-950\/65/, 'Home uses the same lighter overlay in canvas and preview');
+      }
     }
     await loaded(canvas.locator(`[data-editor-section="${hero.id}"] img`));
     const draft = await exportDraft(original.page);

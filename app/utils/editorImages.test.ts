@@ -22,7 +22,7 @@ const appRoot = resolve(import.meta.dirname, '..');
 const publicRoot = resolve(appRoot, '../public');
 const components = new Map<string, Component>();
 const providers = {
-  none: { setup: noneProvider, defaults: {} },
+  none: { setup: () => ({ ...noneProvider(), defaults: {} }), defaults: {} },
   ipx: { setup: ipxProvider, defaults: {} },
 };
 const image = createImage({
@@ -99,6 +99,7 @@ async function renderImages(view: View, document: PageDocument) {
     props: {
       src: { type: String, required: true },
       provider: { type: String, default: undefined },
+      imgAttrs: { type: Object, default: () => ({}) },
     },
     setup(props) {
       const sources = image.getSizes(props.src, {
@@ -107,7 +108,7 @@ async function renderImages(view: View, document: PageDocument) {
         modifiers: { format: 'webp', quality: 75 },
       });
       calls.push({ src: props.src, provider: props.provider, url: sources.src!, srcset: sources.srcset });
-      return () => vue.h('picture', vue.h('img', { src: sources.src, srcset: sources.srcset }));
+      return () => vue.h('picture', vue.h('img', { ...props.imgAttrs, src: sources.src, srcset: sources.srcset }));
     },
   }));
   const html = await renderToString(app);
@@ -131,6 +132,27 @@ function expectRawImage(call: ImageCall, src: string) {
 }
 
 describe('editor image delivery', () => {
+  it.each(['canvas', 'preview', 'public'] as const)('uses the same brighter Home hero treatment in %s without changing document data', async (view) => {
+    const document = createDefaultPageDocument('home');
+    const hero = document.sections.find(section => section.kind === 'hero')!;
+    hero.content.image = '/images/clasteria/portal-plaza.png';
+    hero.style = { accent: '#aabbcc', background: '#112233', spacing: 'roomy' };
+    const original = structuredClone(document);
+    const { html } = await renderImages(view, document);
+    expect(html).toContain('class="size-full object-cover opacity-75"');
+    expect(html).toContain('from-neutral-950/55 via-neutral-950/40 to-neutral-950/65');
+    expect(html).toContain('--home-accent:#aabbcc;--home-background:#112233');
+    expect(html).toContain('home-spacing-roomy');
+    expect(document).toEqual(original);
+  });
+
+  it.each(['canvas', 'preview', 'public'] as const)('keeps other page hero styling unchanged in %s', async (view) => {
+    const { html } = await renderImages(view, createDefaultPageDocument('support'));
+    expect(html).toContain('class="size-full object-cover opacity-35"');
+    expect(html).toContain('from-neutral-950/80 via-neutral-950/60 to-neutral-950/85');
+    expect(html).not.toContain('opacity-75');
+  });
+
   it('keeps the supplied plaza PNG intact and makes it an optional shared choice', async () => {
     const value = '/images/clasteria/portal-plaza.png';
     const expected = { label: 'ネザーゲートのある広場', value };

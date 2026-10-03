@@ -51,6 +51,9 @@ describe('home document defaults', () => {
     expect(document.sections[0]!.content).toMatchObject({
       title: '遊びから\nつながる世界へ', primaryLabel: 'お知らせ', image: '/images/clasteria/portal-plaza.png',
     });
+    expect(document.sections[1]!.content.title).toBe('Minecraft から広がる\n遊びの世界。');
+    expect(document.sections[2]!.content.eyebrow).toBe('NEWSROOM');
+    expect(document.sections[3]!.content.title).toBe('知りたいこと、\n困ったこと。');
     for (const section of document.sections) {
       expect(createHomeSection(section.kind, section.id)).toEqual(section);
     }

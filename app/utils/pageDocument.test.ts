@@ -73,6 +73,20 @@ describe('bounded page document registry and defaults', () => {
     }
   });
 
+  it('keeps the reviewed Support and news listing copy with the requested plaza image', () => {
+    const support = createDefaultPageDocument('support');
+    expect(support.sections[0]!.content).toMatchObject({
+      title: 'お手伝いできることは\nありますか。',
+      description: 'ゲームへの参加、ご質問、不具合のご報告。\nClasteria に関するお問い合わせはこちらから。',
+      image: '/images/clasteria/portal-plaza.png', imageAlt: 'ネザーゲートのある広場',
+    });
+    const articles = createDefaultPageDocument('articles');
+    expect(articles.sections[0]!.content).toMatchObject({
+      eyebrow: 'NEWSROOM', title: 'ニュース', description: 'Clasteria のお知らせをお届けします。',
+      image: '/images/clasteria/portal-plaza.png', imageAlt: 'ネザーゲートのある広場',
+    });
+  });
+
   it('preserves the legacy Home v1 data and serialization exactly', () => {
     const document = createDefaultHomeDocument();
     expect(createDefaultPageDocument('home')).toEqual(document);

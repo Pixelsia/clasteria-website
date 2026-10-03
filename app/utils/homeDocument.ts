@@ -35,7 +35,7 @@ export const homeSectionTemplates: Record<HomeSectionKind, Omit<HomeSection, 'id
   about: {
     kind: 'about',
     content: {
-      eyebrow: 'ABOUT CLASTERIA', title: 'Minecraft から広がる、遊びの世界。',
+      eyebrow: 'ABOUT CLASTERIA', title: 'Minecraft から広がる\n遊びの世界。',
       description: 'Clasteria は Pixelsia が制作する Minecraft のプロジェクトです。このサイトでは、お知らせやお問い合わせ窓口をご案内しています。',
       cardTitle: 'Clasteria の情報はこちらから', cardBody: 'お知らせの確認はニュースへ。ご質問やご相談は、メール・Discord の窓口をご利用ください。',
       primaryLabel: 'ニュースを見る', primaryTo: '/articles', secondaryLabel: 'お問い合わせ', secondaryTo: '/support',
@@ -44,13 +44,13 @@ export const homeSectionTemplates: Record<HomeSectionKind, Omit<HomeSection, 'id
   },
   news: {
     kind: 'news',
-    content: { eyebrow: 'NEWS', title: 'ニュース', description: 'Clasteria からのお知らせをお届けします。', primaryLabel: 'すべて見る' },
+    content: { eyebrow: 'NEWSROOM', title: 'ニュース', description: 'Clasteria からのお知らせをお届けします。', primaryLabel: 'すべて見る' },
     style: { accent: '#016630', background: '#ffffff', spacing: 'normal' },
   },
   contact: {
     kind: 'contact',
     content: {
-      eyebrow: 'CONTACT', title: '知りたいこと、困ったこと。', description: 'ゲームへの参加やご質問、不具合のご報告はこちらから。',
+      eyebrow: 'CONTACT', title: '知りたいこと、\n困ったこと。', description: 'ゲームへの参加やご質問、不具合のご報告はこちらから。',
       primaryLabel: 'お問い合わせ', primaryTo: '/support',
     },
     style: { accent: '#7bf1a8', background: '#030712', spacing: 'normal' },

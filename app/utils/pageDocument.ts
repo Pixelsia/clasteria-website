@@ -237,11 +237,11 @@ export function createDefaultPageDocument(page: PageId): PageDocument {
   if (page === 'home') return createDefaultHomeDocument();
   const sections: Record<Exclude<PageId, 'home'>, PageSection[]> = {
     'support': [
-      section('page-hero', 'hero', { eyebrow: 'SUPPORT', title: 'お手伝いできることは、ありますか。', description: 'ゲームへの参加、ご質問、不具合のご報告。Clasteria に関するお問い合わせはこちらから。' }),
+      section('page-hero', 'hero', { eyebrow: 'SUPPORT', title: 'お手伝いできることは\nありますか。', description: 'ゲームへの参加、ご質問、不具合のご報告。\nClasteria に関するお問い合わせはこちらから。' }),
       section('support-contact', 'contact'), section('support-guide', 'before-contact'), section('faq', 'faq'),
     ],
     'articles': [
-      section('page-hero', 'hero', { eyebrow: 'NEWS', title: 'ニュース', description: 'Clasteria のお知らせをお届けします。' }),
+      section('page-hero', 'hero', { eyebrow: 'NEWSROOM', title: 'ニュース', description: 'Clasteria のお知らせをお届けします。' }),
       section('article-list', 'article-list'),
     ],
     'onigokko': [

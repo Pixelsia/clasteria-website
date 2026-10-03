@@ -46,7 +46,7 @@ const columns: FooterColumn[] = [
                 <NuxtImg
                   src="/images/pixelsia_header_logo.png"
                   alt="Pixelsia"
-                  class="h-6 w-auto object-contain brightness-0 invert md:h-7"
+                  class="h-6 w-auto object-contain md:h-7"
                 />
                 <span
                   class="h-6 w-px bg-neutral-700"
@@ -69,7 +69,7 @@ const columns: FooterColumn[] = [
           <NuxtImg
             src="/images/pixelsia_header_logo.png"
             alt="Pixelsia"
-            class="h-6 w-auto object-contain opacity-80 brightness-0 invert md:h-7"
+            class="h-6 w-auto object-contain md:h-7"
           />
           <span
             class="h-6 w-px bg-neutral-700"

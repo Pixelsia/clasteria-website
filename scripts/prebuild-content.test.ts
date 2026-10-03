@@ -32,7 +32,7 @@ describe('external content setup', () => {
     await fs.mkdir(path.join(rootDir, 'public'));
     await fs.symlink(sourceDir, path.join(rootDir, 'public/_content'), 'junction');
     await ensureContentSymlink(rootDir);
-    expect(await fs.realpath(path.join(rootDir, 'public/_content'))).toBe(sourceDir);
+    expect(await fs.realpath(path.join(rootDir, 'public/_content'))).toBe(await fs.realpath(sourceDir));
     expect(await fs.readFile(path.join(sourceDir, 'articles/real.md'), 'utf8')).toBe('External article');
   });
 
@@ -50,7 +50,7 @@ describe('external content setup', () => {
     await fs.mkdir(path.join(rootDir, 'public'));
     await fs.symlink(demoDir, path.join(rootDir, 'public/_content'), 'junction');
     await expect(ensureContentSymlink(rootDir)).rejects.toThrow('points to content-demo');
-    expect(await fs.realpath(path.join(rootDir, 'public/_content'))).toBe(demoDir);
+    expect(await fs.realpath(path.join(rootDir, 'public/_content'))).toBe(await fs.realpath(demoDir));
   });
 });
 

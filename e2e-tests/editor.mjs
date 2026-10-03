@@ -3,6 +3,8 @@ import { mkdir, readFile } from 'node:fs/promises';
 import { setTimeout } from 'node:timers/promises';
 import { chromium } from 'playwright-core';
 
+const label = text => new RegExp('^' + [...text].map(character => character.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*') + '$');
+
 const baseURL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const screenshots = process.env.SCREENSHOT_DIR;
 const draftStorageKey = 'clasteria:home-draft:v1';
@@ -42,16 +44,16 @@ try {
   page.setDefaultTimeout(30_000);
   if (screenshots) await mkdir(screenshots, { recursive: true });
 
-  const canvas = page.frameLocator('.editor-canvas iframe');
+  const canvas = page.frameLocator('.editor-canvas iframe.gjs-frame');
   const canvasSections = canvas.locator('[data-editor-section]');
   const sectionList = page.getByRole('list', { name: 'セクション一覧' });
   const sectionButtons = sectionList.getByRole('button');
   const titleField = page.getByLabel('見出し', { exact: true });
 
   async function ready() {
-    await page.getByRole('heading', { name: 'Home を編集', exact: true }).waitFor();
+    await page.getByRole('heading', { name: label('Home を編集') }).waitFor();
     await eventually(async () => {
-      assert.ok(await page.getByRole('button', { name: '下書き書き出し', exact: true }).isEnabled());
+      assert.ok(await page.getByRole('button', { name: /この\s*PC\s*に\s*保存/ }).isEnabled());
     });
     await canvas.locator('.home-section-hero h1').waitFor();
   }
@@ -73,7 +75,7 @@ try {
   async function exportDraft() {
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByRole('button', { name: '下書き書き出し', exact: true }).click(),
+      page.getByRole('button', { name: /この\s*PC\s*に\s*保存/ }).click(),
     ]);
     assert.equal(download.suggestedFilename(), 'clasteria-home-draft.json');
     assert.equal(await download.failure(), null, 'JSON download succeeds');
@@ -83,7 +85,7 @@ try {
   async function importDraft(document) {
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser'),
-      page.getByRole('button', { name: '下書き読み込み', exact: true }).click(),
+      page.getByRole('button', { name: /PC\s*の\s*ファイルを\s*読み込む/ }).click(),
     ]);
     await chooser.setFiles({
       name: 'clasteria-home-draft.json',
@@ -101,27 +103,48 @@ try {
   assert.ok(await canvas.locator('.home-section-hero picture img').isVisible(), 'real hero image renders in the iframe');
   assert.ok(await canvas.getByRole('link', { name: publishedHero.content.primaryLabel, exact: true }).isVisible());
   assert.equal(await titleField.inputValue(), publishedHero.content.title);
-  assert.ok(await page.getByRole('button', { name: '複製', exact: true }).isDisabled(), 'hero cannot be duplicated');
-  assert.ok(await page.getByRole('button', { name: '削除', exact: true }).isDisabled(), 'hero cannot be deleted');
+  assert.ok(await page.getByRole('button', { name: label('複製') }).isDisabled(), 'hero cannot be duplicated');
+  assert.ok(await page.getByRole('button', { name: label('削除') }).isDisabled(), 'hero cannot be deleted');
+
+  // Edit the rendered text itself, including a line break, then flush directly to preview.
+  const inlineTitle = canvas.locator('[data-editor-section="hero"] [data-editor-field="title"]');
+  await inlineTitle.dblclick();
+  await inlineTitle.fill('画面から直接編集\n入力を保持');
+  await page.getByRole('button', { name: label('プレビュー') }).click();
+  await page.getByRole('heading', { name: /画面から直接編集/ }).waitFor();
+  await page.getByRole('link', { name: /編集に\s*戻る/ }).click();
+  await ready();
+  assert.match(await titleField.inputValue(), /画面から直接編集\n入力を保持/);
+  await inlineTitle.dblclick();
+  await inlineTitle.fill('取り消す文章');
+  await inlineTitle.press('Escape');
+  await eventually(async () => assert.match(await titleField.inputValue(), /画面から直接編集/));
+
+  const inlineButton = canvas.locator('[data-editor-section="hero"] [data-editor-field="primaryLabel"]');
+  await inlineButton.dblclick();
+  await inlineButton.fill('編集したボタン');
+  await inlineButton.press('Enter');
+  await eventually(async () => assert.equal(await page.getByLabel('ボタンの文字', { exact: true }).inputValue(), '編集したボタン'));
+  assert.equal(new URL(page.url()).pathname, '/editor', 'editing a link label keeps the editor open');
 
   await titleField.fill(editedTitle);
   await titleField.press('Tab');
   await canvas.getByText(editedTitle, { exact: true }).waitFor();
 
   await sectionList.getByRole('button', { name: /Clasteria の紹介/ }).click();
-  await page.getByRole('button', { name: '上へ', exact: true }).click();
+  await page.getByRole('button', { name: label('上へ') }).click();
   const movedIds = [publishedIds[1], publishedIds[0], ...publishedIds.slice(2)];
   await canvasOrder(movedIds);
-  await page.getByRole('button', { name: '元に戻す', exact: true }).click();
+  await page.getByRole('button', { name: label('元に戻す') }).click();
   await canvasOrder(publishedIds);
-  await page.getByRole('button', { name: 'やり直す', exact: true }).click();
+  await page.getByRole('button', { name: label('やり直す') }).click();
   await canvasOrder(movedIds);
   await sectionList.getByRole('button', { name: /Clasteria の紹介/ }).click();
-  await page.getByRole('button', { name: '下へ', exact: true }).click();
+  await page.getByRole('button', { name: label('下へ') }).click();
   await canvasOrder(publishedIds);
   assert.ok(await canvas.getByText(editedTitle, { exact: true }).isVisible(), 'reordering preserves edited content');
 
-  await page.getByRole('button', { name: '＋ お問い合わせ', exact: true }).click();
+  await page.getByRole('button', { name: label('＋ お問い合わせ') }).click();
   await eventually(async () => assert.equal(await canvasSections.count(), published.sections.length + 1));
   const addedId = await canvasSections.last().getAttribute('data-editor-section');
   assert.ok(addedId && !publishedIds.includes(addedId), 'added section has a new identity');
@@ -129,14 +152,14 @@ try {
   await titleField.fill(addedTitle);
   await titleField.press('Tab');
   await canvas.getByText(addedTitle, { exact: true }).waitFor();
-  await page.getByRole('button', { name: '複製', exact: true }).click();
+  await page.getByRole('button', { name: label('複製') }).click();
   await eventually(async () => {
     assert.equal(await canvasSections.count(), published.sections.length + 2);
     assert.equal(await canvas.getByText(addedTitle, { exact: true }).count(), 2, 'duplicate retains its content');
   });
   const duplicateId = await canvasSections.last().getAttribute('data-editor-section');
   assert.notEqual(duplicateId, addedId, 'duplicate has its own identity');
-  await page.getByRole('button', { name: '削除', exact: true }).click();
+  await page.getByRole('button', { name: label('削除') }).click();
   await canvasOrder([...publishedIds, addedId]);
   assert.equal(await canvas.getByText(addedTitle, { exact: true }).count(), 1, 'only the duplicate is deleted');
 
@@ -181,10 +204,10 @@ try {
   assert.deepEqual(await exportDraft(), imported, 'valid import round-trips through JSON');
   if (screenshots) await page.screenshot({ path: `${screenshots}/editor-1440.png`, fullPage: true });
 
-  await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
-  await page.waitForURL(`${baseURL}/editor/preview`);
+  await page.getByRole('button', { name: label('プレビュー') }).click();
+  await page.waitForURL(`${baseURL}/editor/preview?page=home`);
   await page.locator('.home-section-hero h1').getByText(importedTitle, { exact: true }).waitFor();
-  assert.equal(await page.locator('.editor-canvas iframe').count(), 0, 'preview is the real page, not the editor canvas');
+  assert.equal(await page.locator('.editor-canvas iframe.gjs-frame').count(), 0, 'preview is the real page, not the editor canvas');
   assert.deepEqual(
     await page.locator('.home-section').evaluateAll(nodes => nodes.map(node => node.dataset.sectionId)),
     imported.sections.map(section => section.id),
@@ -192,7 +215,7 @@ try {
   );
   if (screenshots) await page.screenshot({ path: `${screenshots}/editor-preview-1440.png`, fullPage: true });
 
-  await page.getByRole('link', { name: '公開版を見る', exact: true }).click();
+  await page.getByRole('link', { name: label('公開版を見る') }).click();
   await page.waitForURL(`${baseURL}/`);
   await page.locator('.home-section-hero h1').getByText(publishedHero.content.title, { exact: true }).waitFor();
   assert.equal(await page.getByText(importedTitle, { exact: true }).count(), 0, 'local draft never changes the public Home');
@@ -206,25 +229,25 @@ try {
   await page.goto(`${baseURL}/editor`, { waitUntil: 'domcontentloaded' });
   await ready();
   await canvas.getByText(importedTitle, { exact: true }).waitFor();
-  await page.getByRole('button', { name: '公開版にリセット', exact: true }).click();
+  await page.getByRole('button', { name: label('初期デザインにリセット') }).click();
   const resetDialog = page.getByRole('alertdialog', { name: '下書きをリセット' });
   await resetDialog.waitFor();
-  await resetDialog.getByRole('button', { name: 'キャンセル', exact: true }).click();
+  await resetDialog.getByRole('button', { name: label('キャンセル') }).click();
   await resetDialog.waitFor({ state: 'hidden' });
   assert.deepEqual(await draft(), imported, 'cancel keeps the saved draft');
   assert.deepEqual(await exportDraft(), imported, 'cancel keeps the current document');
-  await page.getByRole('button', { name: '公開版にリセット', exact: true }).click();
-  await resetDialog.getByRole('button', { name: 'リセットする', exact: true }).click();
+  await page.getByRole('button', { name: label('初期デザインにリセット') }).click();
+  await resetDialog.getByRole('button', { name: label('リセットする') }).click();
   await resetDialog.waitFor({ state: 'hidden' });
   await canvasOrder(publishedIds);
   await canvas.getByText(publishedHero.content.title, { exact: true }).waitFor();
   await eventually(async () => assert.deepEqual(await draft(), published, 'confirmed reset saves the published document'));
   assert.deepEqual(await exportDraft(), published, 'confirmed reset restores all published content');
-  assert.ok(await page.getByRole('button', { name: '元に戻す', exact: true }).isDisabled(), 'reset clears undo history');
+  await eventually(async () => assert.ok(await page.getByRole('button', { name: label('元に戻す') }).isDisabled(), 'reset clears undo history'));
 
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
-    await page.getByRole('button', { name: 'スマートフォン', exact: true }).click();
+    await page.getByRole('button', { name: label('スマートフォン') }).click();
     await canvas.locator('.home-section-hero h1').waitFor();
     await eventually(async () => {
       const fits = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);

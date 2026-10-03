@@ -10,7 +10,11 @@ import type { MinimarkElement, MinimarkTree, ParsedContentFile } from '@nuxt/con
  */
 export async function ensureContentSymlink(rootDir = process.cwd()) {
   const contentDir = path.resolve(rootDir, 'public/_content');
-  const demoDir = path.resolve(rootDir, 'content-demo');
+  const demoPath = path.resolve(rootDir, 'content-demo');
+  const demoDir = await fs.realpath(demoPath).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return demoPath;
+    throw error;
+  });
   const target = await fs.realpath(contentDir).catch((error: NodeJS.ErrnoException) => {
     if (error.code === 'ENOENT') return undefined;
     throw error;

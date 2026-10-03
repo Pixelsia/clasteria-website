@@ -85,6 +85,7 @@ async function mountEditor(
   baseline?: ServerHomeDraft,
   recovery: {
     rawLocal?: string; existing?: string; failWrite?: boolean; storage?: ReadonlyMap<string, string>; page?: PageId;
+    deferUpdates?: boolean;
   } = {},
 ) {
   const storage = new Map(recovery.storage);
@@ -114,7 +115,7 @@ async function mountEditor(
     get: () => section,
     set: (_key: string, next: HomeSection) => {
       section = next;
-      emit('update');
+      if (!recovery.deferUpdates) emit('update');
     },
   });
   let components: ReturnType<typeof model>[] = [];
@@ -196,6 +197,7 @@ async function mountEditor(
     '~/utils/pageDocument': pageDocuments,
     '~/utils/pageDraftClient': pageDrafts,
     '~/utils/homeDraftClient': drafts,
+    '~/utils/editorInlineText': { markInlineText: () => {}, inlineTextValue: () => '' },
     '~/utils/editorCanvas': { configureHomeEditorCanvas: () => {} },
     '~/composables/editorSection': { createEditorSectionVNode: () => {} },
     '~/components/top/HomeSection.vue': {},
@@ -357,6 +359,19 @@ describe('dismissible editor notice', () => {
       expect(guidance, `Missing critical guidance: ${condition}`).toBeDefined();
       expect(noticeControlled(guidance!), `Notice dismissal hides critical guidance: ${condition}`).toBe(false);
     }
+  });
+});
+
+describe('rapid inspector input', () => {
+  it('preserves the latest field when GrapesJS has not refreshed the selected snapshot yet', async () => {
+    const editor = await mountEditor(undefined, undefined, { deferUpdates: true });
+    await editor.reply(null);
+    editor.api.changeField('title', '連続入力の見出し\n最後の文字');
+    editor.api.changeField('description', '直後に入力した説明文');
+    const content = editor.api.documentFromEditor().sections[0]!.content;
+    expect(content.title).toBe('連続入力の見出し\n最後の文字');
+    expect(content.description).toBe('直後に入力した説明文');
+    editor.unmount();
   });
 });
 

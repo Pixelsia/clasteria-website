@@ -11,7 +11,7 @@ export function configureHomeEditorCanvas(editor: Pick<Editor, 'on'>, sourceDocu
     }
     const style = frameDocument.createElement('style');
     style.dataset.clasteriaCanvas = 'true';
-    style.textContent = '[data-editor-section] > * { pointer-events: none; } .site-reveal { transform: none !important; opacity: 1 !important; } body { margin: 0; }';
+    style.textContent = '[data-editor-section] a { cursor: default; } [data-editor-field] { pointer-events: auto; cursor: text; } [data-editor-field]:hover { outline: 2px dashed #16a34a; outline-offset: 3px; } [data-editor-field][contenteditable] { outline: 3px solid #16a34a; outline-offset: 4px; min-width: 1em; } .gjs-selected { outline: 3px solid #16a34a !important; } .site-reveal { transform: none !important; opacity: 1 !important; } body { margin: 0; }';
     frameDocument.head.appendChild(style);
     frameDocument.documentElement.lang = 'ja';
   });

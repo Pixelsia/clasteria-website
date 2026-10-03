@@ -4,6 +4,7 @@ import { createEditorSectionVNode } from '~/composables/editorSection';
 import type { Component, Editor } from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import { configureHomeEditorCanvas } from '~/utils/editorCanvas';
+import { markInlineText, inlineTextValue } from '~/utils/editorInlineText';
 import PageSectionView from '~/components/editor/PageSection.vue';
 import {
   createDefaultPageDocument, createPageSection, pageFieldLabels,
@@ -39,6 +40,9 @@ const selected = shallowRef<PageSection>();
 const sectionList = ref<PageSection[]>([]);
 const ready = ref(false);
 const canvasReady = ref(false);
+const fileSavedDocument = ref<string>();
+const fileStatus = ref('PC のファイルには未保存');
+const fileDirty = computed(() => fileSavedDocument.value !== draftState.value.current);
 const status = ref('エディターを読み込んでいます…');
 const error = ref('');
 const canUndo = ref(false);
@@ -70,6 +74,26 @@ const saveRequiresLoad = computed(() => {
 let serverRequest: AbortController | undefined;
 let editor: Editor | undefined;
 let syncing = false;
+const inlineObservers = new WeakMap<HTMLElement, MutationObserver>();
+let inlineEdit: { element: HTMLElement; model: Component; key: string; original: string } | undefined;
+function commitInlineText() {
+  const active = inlineEdit;
+  if (!active) return;
+  const section = active.model.get('section') as PageSection;
+  const value = inlineTextValue(active.element, isMultilinePageField(section.kind, active.key)).slice(0, 2000);
+  if (value !== section.content[active.key]) {
+    active.model.set('section', { ...section, content: { ...section.content, [active.key]: value } });
+  }
+}
+function finishInlineText() {
+  if (!inlineEdit) return;
+  commitInlineText();
+  const active = inlineEdit;
+  inlineEdit = undefined;
+  active.element.removeAttribute('contenteditable');
+  active.model.trigger('change:section');
+}
+
 let disposed = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let canvasTimer: ReturnType<typeof setTimeout> | undefined;
@@ -100,6 +124,7 @@ function downloadArticle() {
   catch (cause) { error.value = (cause as Error).message; }
 }
 function requestPageSwitch(value: string) {
+  finishInlineText();
   if (value === pageId || !pageDefinitions.some(page => page.id === value) || serverBusy.value) return;
   if (serverDirty.value || invalidDraft.value || protectedLocalDraft.value !== undefined) {
     pendingPageSwitch.value = value as PageId;
@@ -134,6 +159,7 @@ function selectedModel() {
   return editor?.getSelected();
 }
 function documentFromEditor(): PageDocument {
+  commitInlineText();
   return validatePageDocument({ version: 1, page: pageId, sections: editor?.getComponents().map((component: Component) => component.get('section')) ?? [] });
 }
 function updateState() {
@@ -204,8 +230,8 @@ function applyDocument(document: PageDocument, serverDraft?: ServerPageDraft) {
   const generation = draftState.value.generation;
   syncing = true;
   editor.setComponents(document.sections.map(section => ({ type: 'clasteria-section', section })));
-  editor.UndoManager.clear();
   editor.select(editor.getComponents().at(0));
+  editor.UndoManager.clear();
   syncing = false;
   updateState();
   trackDocument();
@@ -221,12 +247,14 @@ function applyDocument(document: PageDocument, serverDraft?: ServerPageDraft) {
 function changeField(key: string, value: string) {
   const model = selectedModel();
   if (!model || !selected.value) return;
-  model.set('section', { ...selected.value, content: { ...selected.value.content, [key]: value } });
+  const current = model.get('section') as PageSection;
+  model.set('section', { ...current, content: { ...current.content, [key]: value } });
 }
 function changeStyle(key: string, value: string) {
   const model = selectedModel();
   if (!model || !selected.value) return;
-  model.set('section', { ...selected.value, style: { ...selected.value.style, [key]: value } });
+  const current = model.get('section') as PageSection;
+  model.set('section', { ...current, style: { ...current.style, [key]: value } });
 }
 function selectSection(id: string) {
   const model = editor?.getComponents().find((component: Component) => component.get('section')?.id === id);
@@ -267,10 +295,12 @@ function removeSection() {
   editor?.select(editor.getComponents().at(0));
 }
 function undo() {
+  finishInlineText();
   editor?.UndoManager.undo();
   changed();
 }
 function redo() {
+  finishInlineText();
   editor?.UndoManager.redo();
   changed();
 }
@@ -298,7 +328,8 @@ function downloadOriginalBackup() {
 function downloadDraft() {
   try {
     downloadJson(serializePageDocument(documentFromEditor()), `clasteria-${pageId}-draft.json`);
-    status.value = '下書きを書き出しました。ファイルを保管してください';
+    fileSavedDocument.value = serializePageDocument(documentFromEditor());
+    fileStatus.value = 'JSON のダウンロードを開始しました。保存先でファイルを確認してください';
   }
   catch (cause) { error.value = (cause as Error).message; }
 }
@@ -323,9 +354,10 @@ async function importDraft(event: Event) {
   finally { input.value = ''; }
 }
 function preview() {
+  finishInlineText();
   try {
     sessionStorage.setItem(storageKeys.preview, serializePageDocument(documentFromEditor()));
-    saveDraft();
+    if (!saveDraft()) return;
     navigateTo(`/editor/preview?page=${pageId}`);
   }
   catch (cause) { error.value = `プレビューを開けませんでした: ${(cause as Error).message}`; }
@@ -370,7 +402,7 @@ async function requestServerDraft(method: 'GET' | 'PUT', body?: { document: Page
 function reportServerError(cause: unknown) {
   serverError.value = cause instanceof PageDraftRequestError
     ? cause
-    : new PageDraftRequestError('validation', cause instanceof Error ? cause.message : '下書きを保存できませんでした。');
+    : new PageDraftRequestError('validation', cause instanceof Error ? cause.message : 'サーバーにバックアップできませんでした。');
   if (serverError.value.code === 'conflict') serverConflict.value = true;
 }
 async function checkServerDraft(allowAutoLoad = false, requestLoad = false) {
@@ -389,7 +421,7 @@ async function checkServerDraft(allowAutoLoad = false, requestLoad = false) {
       draftState.value = { ...draftState.value, base: null };
       serverConflict.value = false;
       if (hadBaseline) saveDraft();
-      serverStatus.value = 'サーバーに下書きはありません。「下書きを保存」で作成できます';
+      serverStatus.value = 'サーバーに下書きはありません。「サーバーにバックアップ」で作成できます';
       return;
     }
     if (allowAutoLoad && canApplyServerPageDraft(draftState.value, generation)) {
@@ -448,7 +480,7 @@ async function saveServerDraft() {
     saveDraft();
     serverStatus.value = serverDirty.value
       ? '送信した内容を保存しました。その後の変更は、もう一度保存してください'
-      : 'サーバーに下書きを保存しました。公開サイトは変わりません';
+      : 'サーバーにバックアップしました。公開サイトは変わりません';
   }
   catch (cause) {
     if (!disposed) reportServerError(cause);
@@ -489,7 +521,7 @@ onMounted(async () => {
       plugins: [(instance) => {
         instance.DomComponents.addType('clasteria-section', {
           model: {
-            defaults: { droppable: false, editable: false, stylable: false, copyable: false, traits: [], draggable: (_source: Component, target: Component) => target.is('wrapper') },
+            defaults: { _undo: ['section'], toolbar: [], droppable: false, editable: false, stylable: false, copyable: false, traits: [], draggable: (_source: Component, target: Component) => target.is('wrapper') },
             init() {
               const section = this.get('section') as PageSection;
               if (!section) return;
@@ -500,16 +532,66 @@ onMounted(async () => {
             },
           },
           view: {
-            init() { this.listenTo(this.model, 'change:section', this.renderSection); },
+            init() {
+              this.listenTo(this.model, 'change:section', this.renderSection);
+              const observer = new MutationObserver(() => {
+                if (!disposed && inlineEdit?.model !== this.model) {
+                  markInlineText(this.el, this.model.get('section') as PageSection);
+                }
+              });
+              observer.observe(this.el, { childList: true, subtree: true });
+              inlineObservers.set(this.el, observer);
+              this.el.addEventListener('dblclick', (event: MouseEvent) => {
+                const element = (event.target as HTMLElement).closest<HTMLElement>('[data-editor-field]');
+                if (!element || !this.el.contains(element)) return;
+                event.preventDefault();
+                event.stopPropagation();
+                finishInlineText();
+                editor?.select(this.model);
+                const section = this.model.get('section') as PageSection;
+                const key = element.dataset.editorField!;
+                inlineEdit = { element, model: this.model, key, original: section.content[key]! };
+                element.setAttribute('contenteditable', 'plaintext-only');
+                element.focus();
+              });
+              this.el.addEventListener('input', () => {
+                commitInlineText();
+              });
+              this.el.addEventListener('focusout', () => {
+                finishInlineText();
+              });
+              this.el.addEventListener('keydown', (event: KeyboardEvent) => {
+                if (!inlineEdit || event.isComposing) return;
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  inlineEdit.element.innerText = inlineEdit.original;
+                  finishInlineText();
+                }
+                else if (event.key === 'Enter' && (!isMultilinePageField((this.model.get('section') as PageSection).kind, inlineEdit.key) || event.metaKey || event.ctrlKey)) {
+                  event.preventDefault();
+                  finishInlineText();
+                }
+              });
+              this.el.addEventListener('click', (event: MouseEvent) => {
+                if ((event.target as HTMLElement).closest('a,button')) event.preventDefault();
+              }, true);
+            },
             onRender() { this.renderSection(); },
             renderSection() {
+              if (inlineEdit?.model === this.model) return;
               const section = this.model.get('section') as PageSection;
               if (!section) return;
               const vnode = createEditorSectionVNode(PageSectionView, section, appContext, pageId);
               render(vnode, this.el);
               this.el.setAttribute('data-editor-section', section.id);
+              void nextTick(() => {
+                if (!disposed) markInlineText(this.el, section);
+              });
             },
-            removed() { render(null, this.el); },
+            removed() {
+              inlineObservers.get(this.el)?.disconnect();
+              render(null, this.el);
+            },
           },
         });
       }],
@@ -543,7 +625,10 @@ onMounted(async () => {
         error.value = `セクションは最大 ${maxPageSections} 個です。`;
       }
     });
-    editor.on('component:selected component:deselected', updateState);
+    editor.on('component:selected component:deselected', () => {
+      if (inlineEdit && selectedModel() !== inlineEdit.model) finishInlineText();
+      updateState();
+    });
     editor.on('update', changed);
     let initial = createDefaultPageDocument(pageId);
     let hasLocalBackup = false;
@@ -677,15 +762,13 @@ onBeforeUnmount(() => {
           :disabled="!ready"
           @click="fileInput?.click()"
         >
-          下書き読み込み
+          PCのファイルを読み込む
         </UButton>
         <UButton
-          color="neutral"
-          variant="outline"
           :disabled="!ready"
           @click="downloadDraft"
         >
-          下書き書き出し
+          このPCに保存
         </UButton>
         <UButton
           v-if="pageId === 'article-draft'"
@@ -706,11 +789,13 @@ onBeforeUnmount(() => {
           サーバーの下書きを読み込む
         </UButton>
         <UButton
+          color="neutral"
+          variant="outline"
           :disabled="!ready || !!serverBusy || !!pendingServerLoad || saveRequiresLoad || !serverDirty"
           :loading="serverBusy === 'saving'"
           @click="saveServerDraft"
         >
-          下書きを保存
+          サーバーにバックアップ
         </UButton>
         <UButton
           color="neutral"
@@ -727,6 +812,14 @@ onBeforeUnmount(() => {
         >
           {{ pageDefinition.published ? '公開版に戻る' : '公開サイトへ' }}
         </UButton>
+      </div>
+      <div
+        class="w-full text-xs"
+        role="status"
+        aria-live="polite"
+      >
+        {{ status }} · {{ fileDirty ? '現在の内容は PC のファイルに未書き出し' : '現在の内容のダウンロードを開始済み' }}
+        <span class="ml-2">{{ fileStatus }}</span>
       </div>
       <input
         ref="fileInput"
@@ -757,7 +850,7 @@ onBeforeUnmount(() => {
           variant="outline"
           @click="downloadDraft"
         >
-          下書き書き出し
+          このPCに保存
         </UButton>
         <UButton
           size="sm"
@@ -785,7 +878,11 @@ onBeforeUnmount(() => {
         <span aria-hidden="true">×</span>
       </button>
       <div class="editor-notice">
-        <p>編集中の内容はこのブラウザーに自動保存されます。「下書きを保存」でサーバーにも保存できます。保存・読み込みでは公開サイトは変わりません。JSON でも保管できます。</p>
+        <p>
+          文章をダブルクリックすると画面上で編集できます。編集中の内容はこのブラウザーに自動保存されます。
+          この PC に保存ボタンで JSON ファイルをダウンロードします。ブラウザーの自動保存とは別です。
+          サーバーにバックアップボタンは任意の保管です。保存・読み込みでは公開サイトは変わりません。
+        </p>
         <p
           role="status"
           aria-live="polite"
@@ -828,8 +925,9 @@ onBeforeUnmount(() => {
       </p>
       <div
         v-if="serverError"
-        role="alert"
-        class="mt-2 text-red-800"
+        :role="serverError.code === 'unavailable' ? 'status' : 'alert'"
+        :class="serverError.code === 'unavailable' ? 'text-neutral-600' : 'text-red-800'"
+        class="mt-2"
       >
         <p>{{ serverError.message }}</p>
         <div class="mt-2 flex flex-wrap gap-2">
@@ -870,7 +968,7 @@ onBeforeUnmount(() => {
         </h2>
         <p id="server-load-description">
           現在の編集内容とブラウザーの下書きは、リビジョン {{ pendingServerLoad.draft.revision }} の内容に置き換わります。
-          残したい変更は、先に「下書き書き出し」で JSON を保管してください。公開サイトは変わりません。
+          残したい変更は、先に「この PC に保存」で JSON を保管してください。公開サイトは変わりません。
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
           <UButton
@@ -879,7 +977,7 @@ onBeforeUnmount(() => {
             size="sm"
             @click="downloadDraft"
           >
-            下書き書き出し
+            このPCに保存
           </UButton>
           <UButton
             size="sm"
@@ -984,7 +1082,7 @@ onBeforeUnmount(() => {
             セクションを選択し、右側で文章・画像・色・余白を変更します。ニュース一覧は公開済みの記事を表示します。「新規記事の下書き」は本文を別に準備する画面です。
           </p>
           <p class="mt-3">
-            サーバーへの保管は「下書きを保存」を使ってください。プレビューで PC・スマートフォン表示も確認してください。公開には、書き出した JSON をブランチへ取り込み、確認・デプロイする作業が必要です。
+            サーバーへの保管は「サーバーにバックアップ」を使ってください。プレビューで PC・スマートフォン表示も確認してください。公開には、書き出した JSON をブランチへ取り込み、確認・デプロイする作業が必要です。
           </p>
           <p class="mt-3">
             機密情報は入力しないでください。共有端末では下書きが残ります。履歴はこの編集画面を開いている間のみ有効です。
@@ -1037,7 +1135,7 @@ onBeforeUnmount(() => {
         aria-label="編集キャンバス"
       >
         <div class="editor-devicebar">
-          <span class="text-xs font-bold">実際の Vue コンポーネントで表示</span>
+          <span class="text-xs font-bold">文章をダブルクリックで編集 · Esc で取消 · ⌘Enter で確定</span>
           <div class="flex gap-1">
             <UButton
               color="neutral"

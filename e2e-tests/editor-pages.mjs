@@ -8,6 +8,8 @@ import { defaultMaintenanceUrl, unpublishedRouteVariants, unpublishedRoutes } fr
 // BASE_URL=http://localhost:3000 CHROMIUM_PATH=/path/to/chrome node e2e-tests/editor-pages.mjs
 // This uses a fresh browser context. Server draft reads are fixtures; no remote
 // draft is written. Canvas, Vue/Nuxt components, navigation and local storage are real.
+const label = text => new RegExp('^' + [...text].map(character => character.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*') + '$');
+
 const baseURL = (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 const screenshotDirectory = process.env.SCREENSHOT_DIR;
 const maintenanceURL = process.env.NUXT_PUBLIC_MAINTENANCE_URL || defaultMaintenanceUrl;
@@ -67,7 +69,7 @@ try {
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
   if (screenshotDirectory) await mkdir(screenshotDirectory, { recursive: true });
-  const canvas = page.frameLocator('.editor-canvas iframe');
+  const canvas = page.frameLocator('.editor-canvas iframe.gjs-frame');
   const selector = page.getByLabel('編集するページ', { exact: true });
   const title = page.getByLabel('見出し', { exact: true });
   const switchDialog = page.getByRole('alertdialog', { name: 'ページを切り替える前の確認' });
@@ -78,7 +80,7 @@ try {
     await eventually(async () => {
       assert.ok(await selector.isEnabled(), `${id}: page selector is ready after server check`);
       assert.equal(await selector.inputValue(), id);
-      assert.ok(await page.getByRole('button', { name: '下書き書き出し', exact: true }).isEnabled());
+      assert.ok(await page.getByRole('button', { name: /この\s*PC\s*に\s*保存/ }).isEnabled());
       assert.equal(await canvas.locator('h1').count(), 1, `${id}: a real main heading renders`);
       assert.ok(await canvas.locator('h1').isVisible(), `${id}: canvas heading is visible`);
       assert.equal(await page.getByRole('alert').count(), 0, `${id}: no editor errors`);
@@ -90,7 +92,7 @@ try {
     // Empty server fixtures make each page locally unsaved. Exercise the actual
     // save-before-switch confirmation rather than changing URLs or editor state.
     await switchDialog.waitFor();
-    await switchDialog.getByRole('button', { name: 'ブラウザーに保管して切り替え', exact: true }).click();
+    await switchDialog.getByRole('button', { name: label('ブラウザーに保管して切り替え') }).click();
     await page.waitForURL(url => url.pathname === '/editor' && url.searchParams.get('page') === id);
     await ready(id);
   }
@@ -98,7 +100,7 @@ try {
   async function exportDraft(id) {
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      page.getByRole('button', { name: '下書き書き出し', exact: true }).click(),
+      page.getByRole('button', { name: /この\s*PC\s*に\s*保存/ }).click(),
     ]);
     assert.equal(download.suggestedFilename(), `clasteria-${id}-draft.json`);
     assert.equal(await download.failure(), null);
@@ -168,7 +170,10 @@ try {
         assert.equal(new URL(await image.evaluate(element => element.currentSrc)).pathname, src);
       });
       await image.evaluate(element => element.decode());
-      assert.deepEqual(await image.evaluate(element => [element.naturalWidth, element.naturalHeight]), [1920, 1009]);
+      const dimensions = await image.evaluate(element => [element.naturalWidth, element.naturalHeight]);
+      assert.ok(dimensions[0] > 0 && dimensions[1] > 0, 'plaza image decoded');
+      // Responsive srcset density corrects naturalWidth at mobile sizes.
+      assert.ok(Math.abs(dimensions[0] / dimensions[1] - 1920 / 1009) < 0.02, 'original plaza aspect ratio');
       assert.equal(await image.evaluate(element => getComputedStyle(element).opacity), '0.75', 'all page heroes use the Home image opacity');
       const overlay = image.locator('xpath=ancestor::section').locator(':scope > .bg-gradient-to-b');
       assert.match(await overlay.getAttribute('class'), /from-neutral-950\/55 via-neutral-950\/40 to-neutral-950\/65/, 'all page heroes use the Home overlay classes');
@@ -188,11 +193,11 @@ try {
     await ready(original.page);
     assert.equal(await picker.inputValue(), src);
     await loaded(canvas.locator(`[data-editor-section="${hero.id}"] img`));
-    await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
+    await page.getByRole('button', { name: label('プレビュー') }).click();
     await page.waitForURL(url => url.pathname === '/editor/preview');
     await loaded(page.locator(`[data-document-page="${original.page}"] img[src="${src}"]`).first());
     if (screenshotDirectory) await page.screenshot({ path: `${screenshotDirectory}/plaza-preview-${original.page}.png`, fullPage: true });
-    await page.getByRole('link', { name: '編集に戻る', exact: true }).click();
+    await page.getByRole('link', { name: label('編集に戻る') }).click();
     await ready(original.page);
     await picker.selectOption(hero.content.image);
     await eventually(async () => assert.deepEqual(await stored(original.page), original));
@@ -234,10 +239,10 @@ try {
     assert.equal(await title.inputValue(), expectedTitle);
     assert.equal(await description.inputValue(), expectedDescription);
     await checkText(canvas.locator(`[data-editor-section="${section.id}"]`));
-    await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
+    await page.getByRole('button', { name: label('プレビュー') }).click();
     await page.waitForURL(url => url.pathname === '/editor/preview');
     await checkText(page.locator(`[data-section-id="${section.id}"]`));
-    await page.getByRole('link', { name: '編集に戻る', exact: true }).click();
+    await page.getByRole('link', { name: label('編集に戻る') }).click();
     await ready(original.page);
     await importDraft(original);
     await eventually(async () => assert.deepEqual(await stored(original.page), original));
@@ -289,7 +294,7 @@ try {
   });
   const supportDraft = await exportDraft('support');
   await selector.selectOption('onigokko');
-  await switchDialog.getByRole('button', { name: 'キャンセル', exact: true }).click();
+  await switchDialog.getByRole('button', { name: label('キャンセル') }).click();
   await switchDialog.waitFor({ state: 'hidden' });
   await ready('support');
   assert.deepEqual(await exportDraft('support'), supportDraft, 'canceling a switch retains editor contents');
@@ -301,7 +306,7 @@ try {
   await eventually(async () => assert.equal((await stored('onigokko')).sections[0].content.title, editedPrivateTitle));
   await page.goBack({ waitUntil: 'domcontentloaded' });
   await switchDialog.waitFor();
-  await switchDialog.getByRole('button', { name: 'キャンセル', exact: true }).click();
+  await switchDialog.getByRole('button', { name: label('キャンセル') }).click();
   await switchDialog.waitFor({ state: 'hidden' });
   await ready('onigokko');
   assert.equal(new URL(page.url()).searchParams.get('page'), 'onigokko', 'canceling browser Back retains the current route');
@@ -320,16 +325,16 @@ try {
   await importDraft(privateDraft);
   await ready('onigokko');
 
-  await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
+  await page.getByRole('button', { name: label('プレビュー') }).click();
   await page.waitForURL(url => url.pathname === '/editor/preview' && url.searchParams.get('page') === 'onigokko');
   await page.locator('[data-document-page="onigokko"] h1').waitFor();
   assert.equal(await page.locator('[data-document-page="onigokko"] h1').innerText(), editedPrivateTitle);
-  assert.equal(await page.locator('.editor-canvas iframe').count(), 0, 'preview is the real component document');
-  assert.equal(await page.getByRole('link', { name: '公開版を見る', exact: true }).count(), 0, 'private preview has no public-page link');
-  await page.getByRole('link', { name: '編集に戻る', exact: true }).click();
+  assert.equal(await page.locator('.editor-canvas iframe.gjs-frame').count(), 0, 'preview is the real component document');
+  assert.equal(await page.getByRole('link', { name: label('公開版を見る') }).count(), 0, 'private preview has no public-page link');
+  await page.getByRole('link', { name: label('編集に戻る') }).click();
   await ready('onigokko');
   await selectPage('home');
-  assert.equal(await canvas.locator('h1').innerText(), editedHomeTitle, 'existing Home draft survives all page switches');
+  assert.equal(await canvas.locator('h1 > span:first-child').innerText(), editedHomeTitle, 'existing Home draft survives all page switches');
 
   for (const path of ['/', '/support', '/articles']) {
     await page.goto(`${baseURL}${path}`, { waitUntil: 'networkidle' });

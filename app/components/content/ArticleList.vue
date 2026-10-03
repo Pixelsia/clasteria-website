@@ -41,10 +41,10 @@ const displayArticles = computed(() => articlesList.value.articles.map(article =
       v-else
       class="site-reveal rounded-lg border border-neutral-200 bg-neutral-50 p-8"
     >
-      <h2 class="text-2xl font-black text-neutral-950">
+      <h2 class="whitespace-pre-line text-2xl font-black text-neutral-950">
         {{ content.emptyTitle }}
       </h2>
-      <p class="mt-3 leading-7 text-neutral-700">
+      <p class="whitespace-pre-line mt-3 leading-7 text-neutral-700">
         {{ content.emptyDescription }}
       </p>
     </div>

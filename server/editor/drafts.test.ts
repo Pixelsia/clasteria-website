@@ -71,6 +71,43 @@ describe('server draft API with real SQLite conditional writes', () => {
     expect(await (await handleDraftRequest(request(), env, scope)).json()).toEqual(saved);
     expect((await (await handleDraftRequest(put(1), env, scope)).json()).draft.revision).toBe(2);
   });
+  it.each((['home', 'support', 'article-draft'] as const).flatMap(page => [
+    { page, ending: 'LF', newline: '\n' },
+    { page, ending: 'CRLF', newline: '\r\n' },
+  ]))('preserves exact $ending prose bytes in $page SQLite inserts, updates and API reloads', async ({ page, newline }) => {
+    const document = createDefaultPageDocument(page);
+    const table = page === 'home' ? 'editor_drafts' : 'editor_page_drafts';
+    for (const baseRevision of [0, 1]) {
+      const text = {
+        title: `  保存 ${baseRevision + 1}${newline}二行目${newline}${newline}<br> は文字列  `,
+        description: `説明の一行目${newline}${newline}説明の三行目${newline}<script>alert("text")</script> と \\n`,
+      };
+      Object.assign(document.sections[0]!.content, text);
+      const response = await handleDraftRequest(request('PUT', { document, baseRevision }, {}, page), env, scope);
+      expect(response.status).toBe(200);
+      const saved = await response.json();
+      const parsed = parseServerPageDraftResponse(saved, page);
+      expect(parsed?.revision).toBe(baseRevision + 1);
+      expect(parsed?.document).toEqual(document);
+      expect(parsed?.document.sections[0]!.content).toMatchObject(text);
+
+      const stored = db.prepare(`SELECT document, CAST(document AS BLOB) AS bytes, revision FROM ${table}
+        WHERE scope = ? AND owner = ? AND page = ?`)
+        .get(scope, 'verified-owner', page) as { document: string; bytes: Uint8Array; revision: number };
+      const json = serializePageDocument(document);
+      expect(stored.document).toBe(json);
+      expect([...stored.bytes]).toEqual([...new TextEncoder().encode(json)]);
+      expect(stored.revision).toBe(baseRevision + 1);
+      expect(JSON.parse(stored.document).sections[0].content).toMatchObject(text);
+
+      const reload = await handleDraftRequest(request('GET', undefined, {}, page), env, scope);
+      expect(reload.status).toBe(200);
+      const loaded = await reload.json();
+      expect(loaded).toEqual(saved);
+      expect(parseServerPageDraftResponse(loaded, page)?.document).toEqual(document);
+      expect(loaded.draft.document.sections[0].content).toMatchObject(text);
+    }
+  });
   it.each(pageDefinitions.filter(({ id }) => id !== 'article-draft'))(
     'roundtrips the added plaza image through JSON and validated server storage for $id without changing defaults', async ({ id }) => {
       const original = createDefaultPageDocument(id);

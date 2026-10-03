@@ -14,10 +14,10 @@ defineProps<{
         class="size-6"
       />
     </div>
-    <h3 class="text-xl font-black text-neutral-950">
+    <h3 class="whitespace-pre-line text-xl font-black text-neutral-950">
       {{ title }}
     </h3>
-    <p class="mt-3 leading-7 text-neutral-700">
+    <p class="whitespace-pre-line mt-3 leading-7 text-neutral-700">
       {{ body }}
     </p>
   </div>

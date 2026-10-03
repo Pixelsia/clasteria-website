@@ -29,7 +29,7 @@ async function copyEmail() {
           name="i-heroicons-envelope"
           class="size-8 text-primary-600"
         />
-        <h2 class="mt-5 text-2xl font-black text-neutral-950">
+        <h2 class="whitespace-pre-line mt-5 text-2xl font-black text-neutral-950">
           {{ content.emailTitle }}
         </h2>
         <p class="mt-4 whitespace-pre-line leading-8 text-neutral-700">
@@ -61,7 +61,7 @@ async function copyEmail() {
         </div>
         <p
           role="status"
-          class="mt-3 text-sm text-neutral-600"
+          class="mt-3 whitespace-pre-line text-sm text-neutral-600"
         >
           <template v-if="copyFailed">
             コピーできませんでした。上のアドレスを選択してコピーしてください。
@@ -79,7 +79,7 @@ async function copyEmail() {
           name="i-heroicons-chat-bubble-left-right"
           class="size-8 text-primary-600"
         />
-        <h2 class="mt-5 text-2xl font-black text-neutral-950">
+        <h2 class="whitespace-pre-line mt-5 text-2xl font-black text-neutral-950">
           {{ content.discordTitle }}
         </h2>
         <p class="mt-4 whitespace-pre-line leading-8 text-neutral-700">
@@ -96,7 +96,7 @@ async function copyEmail() {
             {{ content.discordLabel }}
           </UButton>
         </div>
-        <p class="mt-3 text-sm leading-7 text-neutral-600">
+        <p class="whitespace-pre-line mt-3 text-sm leading-7 text-neutral-600">
           {{ content.discordNote }}
         </p>
       </section>

@@ -159,6 +159,14 @@ export const pageFieldLabels: Record<string, string> = {
   }).flat()),
 };
 
+/** Only prose fields support explicit line breaks; destinations and UI labels stay single-line. */
+export function isMultilinePageField(kind: PageSectionKind, key: string): boolean {
+  return ['eyebrow', 'title', 'description', 'body', 'note', 'placeholder'].includes(key)
+    || /(?:Title|Description|Body|Note)$/.test(key)
+    || /^(?:item|question|answer)\d+$/.test(key)
+    || (kind === 'hero' && key === 'brand');
+}
+
 export const pageImages = [
   ...homeImages,
   { label: 'ミニゲーム', value: '/images/clasteria/minigame.jpg' },

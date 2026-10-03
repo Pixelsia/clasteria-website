@@ -123,10 +123,10 @@ const content = computed(() => props.section.content);
         class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <p class="font-bold text-primary-800">
+          <p class="whitespace-pre-line font-bold text-primary-800">
             {{ content.title }}
           </p>
-          <p class="mt-1 text-sm leading-7 text-neutral-700">
+          <p class="whitespace-pre-line mt-1 text-sm leading-7 text-neutral-700">
             {{ content.description }}
           </p>
         </div>

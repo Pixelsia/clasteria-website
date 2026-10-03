@@ -33,6 +33,7 @@ type EditorApi = {
   resetDraft: () => void;
   importDraft: (event: Event) => Promise<void>;
   documentFromEditor: () => HomeDocument;
+  downloadDraft: () => void;
   downloadOriginalBackup: () => void;
   requestPageSwitch: (page: string) => void;
   switchPage: (page: PageId) => void;
@@ -53,7 +54,7 @@ const executable = ts.transpileModule(`${script}\nexport const api = {
   draftState, serverBusy, serverError, serverDirty, pendingServerLoad, serverStatus, status, error, originalBackup,
   noticeVisible, dismissNotice, showNotice,
   saveServerDraft, checkServerDraft, confirmServerLoad, cancelServerLoad,
-  changeField, resetDraft, importDraft, documentFromEditor, downloadOriginalBackup,
+  changeField, resetDraft, importDraft, documentFromEditor, downloadDraft, downloadOriginalBackup,
   requestPageSwitch, switchPage, pendingPageSwitch, preview,
 };`, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 
@@ -356,6 +357,134 @@ describe('dismissible editor notice', () => {
       expect(guidance, `Missing critical guidance: ${condition}`).toBeDefined();
       expect(noticeControlled(guidance!), `Notice dismissal hides critical guidance: ${condition}`).toBe(false);
     }
+  });
+});
+
+describe('multiline editor content', () => {
+  const cases = (['home', 'support', 'article-draft'] as const).flatMap(page => [
+    { page, ending: 'LF', newline: '\n' },
+    { page, ending: 'CRLF', newline: '\r\n' },
+  ]);
+  const content = (newline: string) => ({
+    title: `  一行目${newline}二行目${newline}${newline}<br> は文字列  `,
+    description: `説明の一行目${newline}${newline}説明の三行目${newline}<script>alert("text")</script> と \\n`,
+  });
+
+  it.each(cases)('autosaves and restores exact $ending title/description and preview text on $page', async ({ page, newline }) => {
+    const editor = await mountEditor(undefined, undefined, { page });
+    await editor.reply(null);
+    const text = content(newline);
+    for (const [key, value] of Object.entries(text)) editor.api.changeField(key, value);
+    expect(editor.api.documentFromEditor().sections[0]!.content).toMatchObject(text);
+    await vi.advanceTimersByTimeAsync(300);
+
+    const keys = pageDrafts.pageStorageKeys(page);
+    const saved = pageDocuments.parsePageDocument(editor.storage.get(keys.draft)!, page);
+    expect(saved.sections[0]!.content).toMatchObject(text);
+    expect(editor.api.error.value).toBe('');
+    editor.api.preview();
+    expect(editor.navigations).toEqual([`/editor/preview?page=${page}`]);
+    expect(pageDocuments.parsePageDocument(editor.session.get(keys.preview)!, page)).toEqual(saved);
+    editor.unmount();
+
+    const reopened = await mountEditor(undefined, undefined, { page, storage: editor.storage });
+    await reopened.reply(null);
+    expect(reopened.api.documentFromEditor()).toEqual(saved);
+    expect(reopened.api.documentFromEditor().sections[0]!.content).toMatchObject(text);
+    reopened.unmount();
+  });
+
+  it.each(cases)('retains exact $ending content through a server save response and fresh $page load', async ({ page, newline }) => {
+    const editor = await mountEditor(undefined, undefined, { page });
+    await editor.reply(null);
+    const text = content(newline);
+    for (const [key, value] of Object.entries(text)) editor.api.changeField(key, value);
+    const save = editor.api.saveServerDraft();
+    const request = editor.requests.at(-1)!;
+    expect(request.url).toBe(`/api/editor/${page}`);
+    expect(request.options.method).toBe('PUT');
+    const submitted = JSON.parse(String(request.options.body));
+    expect(submitted.document.sections[0].content).toMatchObject(text);
+    expect(submitted.baseRevision).toBe(0);
+    const remote = { document: submitted.document, revision: 1, updatedAt: '2026-10-03T10:00:00Z' };
+    await editor.reply(remote);
+    await save;
+    expect(editor.api.serverError.value).toBeUndefined();
+    expect(editor.api.serverDirty.value).toBe(false);
+    expect(editor.api.draftState.value.base?.document.sections[0]!.content).toMatchObject(text);
+    expect(editor.api.documentFromEditor().sections[0]!.content).toMatchObject(text);
+    editor.unmount();
+
+    const reopened = await mountEditor(undefined, undefined, { page });
+    await reopened.reply(remote);
+    expect(reopened.api.documentFromEditor()).toEqual(submitted.document);
+    expect(reopened.api.serverDirty.value).toBe(false);
+    const keys = pageDrafts.pageStorageKeys(page);
+    expect(pageDocuments.parsePageDocument(reopened.storage.get(keys.draft)!, page).sections[0]!.content)
+      .toMatchObject(text);
+    reopened.unmount();
+  });
+
+  it.each(cases)('exports and imports $ending JSON on $page without double escaping or interpreting HTML', async ({ page, newline }) => {
+    const editor = await mountEditor(undefined, undefined, { page });
+    await editor.reply(null);
+    const text = content(newline);
+    for (const [key, value] of Object.entries(text)) editor.api.changeField(key, value);
+    editor.api.downloadDraft();
+    expect(editor.downloads).toHaveLength(1);
+    const json = await editor.downloads[0]!.text();
+    expect(JSON.parse(json).sections[0].content).toMatchObject(text);
+    expect(json).toContain(JSON.stringify(text.title));
+    expect(json).toContain(JSON.stringify(text.description));
+    editor.unmount();
+
+    const imported = await mountEditor(undefined, undefined, { page });
+    await imported.reply(null);
+    const file = { size: new TextEncoder().encode(json).byteLength, text: async () => json };
+    const input = { files: [file], value: 'multiline-draft.json' };
+    await imported.api.importDraft({ target: input } as unknown as Event);
+    expect(input.value).toBe('');
+    expect(imported.api.error.value).toBe('');
+    expect(imported.api.documentFromEditor().sections[0]!.content).toMatchObject(text);
+    const keys = pageDrafts.pageStorageKeys(page);
+    expect(pageDocuments.parsePageDocument(imported.storage.get(keys.draft)!, page).sections[0]!.content)
+      .toMatchObject(text);
+    imported.api.downloadDraft();
+    expect(await imported.downloads[0]!.text()).toBe(json);
+    imported.unmount();
+  });
+
+  it('uses accessible multiline controls and guidance only for prose fields', () => {
+    const { descriptor, errors } = parse(source);
+    expect(errors).toEqual([]);
+    const elements = templateElements(descriptor.template!.ast!);
+    const fields = elements.map(({ element }) => element)
+      .filter(element => element.props.some(prop => prop.type === NodeTypes.DIRECTIVE
+        && prop.name === 'bind' && prop.arg?.loc.source === 'id' && prop.exp?.loc.source === '`editor-field-${key}`'));
+    expect(fields.map(element => element.tag)).toEqual(['select', 'textarea', 'input']);
+    const textarea = fields.find(element => element.tag === 'textarea')!;
+    const condition = 'isMultilinePageField(selected.kind, key)';
+    expect(textarea.props.some(prop => prop.type === NodeTypes.DIRECTIVE
+      && prop.name === 'else-if' && prop.exp?.loc.source === condition)).toBe(true);
+    expect(textarea.props.some(prop => prop.type === NodeTypes.ATTRIBUTE
+      && prop.name === 'rows' && prop.value?.content === '3')).toBe(true);
+    expect(textarea.props.some(prop => prop.type === NodeTypes.DIRECTIVE && prop.name === 'bind'
+      && prop.arg?.loc.source === 'aria-describedby' && prop.exp?.loc.source === '`editor-field-${key}-hint`')).toBe(true);
+    expect(textarea.props.some(prop => prop.type === NodeTypes.DIRECTIVE && prop.name === 'on'
+      && prop.arg?.loc.source === 'input' && prop.exp?.loc.source === 'changeField(key, ($event.target as HTMLTextAreaElement).value)')).toBe(true);
+    expect(textarea.props.some(prop => prop.type === NodeTypes.DIRECTIVE
+      && prop.name === 'on' && ['keydown', 'keypress', 'keyup'].includes(prop.arg?.loc.source ?? ''))).toBe(false);
+
+    const input = fields.find(element => element.tag === 'input')!;
+    expect(input.props.some(prop => prop.type === NodeTypes.DIRECTIVE && prop.name === 'else')).toBe(true);
+    expect(input.props.some(prop => prop.type === NodeTypes.ATTRIBUTE
+      && prop.name === 'type' && prop.value?.content === 'text')).toBe(true);
+    const hint = elements.find(({ element }) => element.props.some(prop => prop.type === NodeTypes.DIRECTIVE
+      && prop.name === 'bind' && prop.arg?.loc.source === 'id' && prop.exp?.loc.source === '`editor-field-${key}-hint`'));
+    expect(hint).toBeDefined();
+    expect(ifCondition(hint!.element)).toBe(condition);
+    expect(hint!.element.children.some(child => child.type === NodeTypes.TEXT
+      && child.content.includes('Enter キーで改行できます。改行はプレビューにも反映されます。'))).toBe(true);
   });
 });
 

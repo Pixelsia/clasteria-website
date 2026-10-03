@@ -10,10 +10,10 @@ defineProps<{ content: Record<string, string> }>();
     <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
       <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p class="text-xs font-black uppercase tracking-widest text-primary-600">
+          <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-600">
             {{ content.eyebrow }}
           </p>
-          <h2 class="mt-3 text-3xl font-black text-neutral-950">
+          <h2 class="whitespace-pre-line mt-3 text-3xl font-black text-neutral-950">
             {{ content.title }}
           </h2>
         </div>
@@ -59,7 +59,7 @@ defineProps<{ content: Record<string, string> }>();
               >
                 {{ rank }}
               </th>
-              <td class="px-4 py-3 text-neutral-600">
+              <td class="whitespace-pre-line px-4 py-3 text-neutral-600">
                 {{ content.placeholder }}
               </td>
               <td class="px-4 py-3 text-neutral-500">

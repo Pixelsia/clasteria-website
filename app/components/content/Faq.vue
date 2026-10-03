@@ -21,6 +21,7 @@ const items = computed(() => Array.from({ length: 6 }, (_, index) => ({
     <UAccordion
       class="mt-6"
       :items="items"
+      :ui="{ label: 'whitespace-pre-line', body: 'whitespace-pre-line' }"
     />
   </UContainer>
 </template>

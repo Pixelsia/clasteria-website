@@ -242,12 +242,13 @@ describe('real page components in the editor canvas', () => {
 
       const model = instance.getComponents().at(0);
       const changed = {
-        ...initial.sections[0]!, content: { ...initial.sections[0]!.content, title: `${page} edited title` },
+        ...initial.sections[0]!, content: { ...initial.sections[0]!.content, title: `${page} edited title\n二行目\n\n空行の後` },
         style: { accent: '#123456', background: '#fedcba', spacing: 'roomy' },
       };
       model.set('section', changed);
       await nextTick();
       expect(hero.querySelector('h1')?.textContent).toBe(changed.content.title);
+      expect(hero.querySelector('h1')?.classList.contains('whitespace-pre-line')).toBe(true);
       expect(hero.style.getPropertyValue('--page-accent')).toBe('#123456');
       expect(hero.style.getPropertyValue('--page-background')).toBe('#fedcba');
       expect(hero.classList.contains('page-spacing-roomy')).toBe(true);

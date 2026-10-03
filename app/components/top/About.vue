@@ -19,10 +19,10 @@ withDefaults(defineProps<{ content?: Record<string, string>; sectionId?: string 
         :description="content.description!"
       />
       <div class="rounded-lg border border-neutral-200 bg-neutral-50 p-6 md:p-10">
-        <h3 class="text-2xl font-black text-neutral-950">
+        <h3 class="whitespace-pre-line text-2xl font-black text-neutral-950">
           {{ content.cardTitle }}
         </h3>
-        <p class="mt-4 leading-8 text-neutral-700">
+        <p class="whitespace-pre-line mt-4 leading-8 text-neutral-700">
           {{ content.cardBody }}
         </p>
         <div class="mt-6 flex flex-wrap gap-3">

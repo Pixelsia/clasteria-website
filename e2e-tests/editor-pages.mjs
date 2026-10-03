@@ -199,6 +199,50 @@ try {
     assert.deepEqual(await exportDraft(original.page), original, 'image QA restores the isolated original draft');
   }
 
+  async function checkLineBreaks(original) {
+    const expectedTitle = '改行のある見出し\n二行目';
+    const expectedDescription = '説明の一行目\n\n空行の後 <br> は文字として表示';
+    const description = page.getByLabel('説明文', { exact: true });
+    assert.equal(await title.evaluate(element => element.tagName), 'TEXTAREA');
+    assert.ok(await title.getAttribute('aria-describedby'));
+    await title.fill('改行のある見出し');
+    await title.press('End');
+    await title.press('Enter');
+    await title.pressSequentially('二行目');
+    await description.fill(expectedDescription);
+    await title.press('Tab');
+    const section = original.sections[0];
+    const headingSelector = section.kind === 'hero' ? 'h1 > span:first-child' : 'h1';
+    async function checkText(root) {
+      const heading = root.locator(headingSelector);
+      assert.equal(await heading.textContent(), expectedTitle);
+      assert.equal(await heading.evaluate(element => getComputedStyle(element).whiteSpace), 'pre-line');
+      const body = root.locator('p').filter({ hasText: '説明の一行目' });
+      assert.equal(await body.textContent(), expectedDescription);
+      assert.equal(await body.evaluate(element => getComputedStyle(element).whiteSpace), 'pre-line');
+      assert.equal(await body.locator('br').count(), 0, 'text stays escaped');
+    }
+    await eventually(() => checkText(canvas.locator(`[data-editor-section="${section.id}"]`)));
+    for (const width of [1440, 390]) await checkLayout(original.page, width);
+    const edited = await exportDraft(original.page);
+    assert.equal(edited.sections[0].content.title, expectedTitle);
+    assert.equal(edited.sections[0].content.description, expectedDescription);
+    await importDraft(edited);
+    await eventually(async () => assert.deepEqual(await stored(original.page), edited));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await ready(original.page);
+    assert.equal(await title.inputValue(), expectedTitle);
+    assert.equal(await description.inputValue(), expectedDescription);
+    await checkText(canvas.locator(`[data-editor-section="${section.id}"]`));
+    await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
+    await page.waitForURL(url => url.pathname === '/editor/preview');
+    await checkText(page.locator(`[data-section-id="${section.id}"]`));
+    await page.getByRole('link', { name: '編集に戻る', exact: true }).click();
+    await ready(original.page);
+    await importDraft(original);
+    await eventually(async () => assert.deepEqual(await stored(original.page), original));
+  }
+
   const response = await page.goto(`${baseURL}/editor`, { waitUntil: 'domcontentloaded' });
   assert.equal(response.status(), 200);
   await ready('home');
@@ -218,6 +262,7 @@ try {
     await checkLayout(definition.id, 1440);
     await checkLayout(definition.id, 390);
     await checkPlazaImage(document);
+    await checkLineBreaks(document);
     if (definition.id === 'login') {
       assert.equal(await canvas.locator('input:not([disabled])').count(), 0, 'login fields are inactive');
       assert.ok(await canvas.getByRole('button', { name: document.sections.find(item => item.kind === 'login-form').content.primaryLabel }).isDisabled());

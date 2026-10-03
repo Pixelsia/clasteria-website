@@ -24,12 +24,12 @@ withDefaults(defineProps<{ content?: Record<string, string>; aboutId?: string; i
 
     <UContainer class="flex min-h-screen items-center justify-center py-24">
       <div class="site-reveal mx-auto flex max-w-5xl flex-col items-center gap-7 text-center">
-        <p class="text-xs font-black uppercase tracking-widest text-primary-300">
+        <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-300">
           {{ content.eyebrow }}
         </p>
         <h1 class="text-5xl font-black leading-tight md:text-7xl">
           <span class="whitespace-pre-line">{{ content.title }}</span><br>
-          <span class="text-primary-300">{{ content.brand }}</span>
+          <span class="whitespace-pre-line text-primary-300">{{ content.brand }}</span>
         </h1>
         <p class="max-w-3xl whitespace-pre-line text-lg leading-9 text-neutral-100">
           {{ content.description }}

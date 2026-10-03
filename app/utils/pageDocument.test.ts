@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  allowedPageSectionKinds, createDefaultPageDocument, createPageSection, isPageId, isRequiredPageSection,
+  allowedPageSectionKinds, createDefaultPageDocument, createPageSection,
+  isMultilinePageField, isPageId, isRequiredPageSection,
   isSafePageLink, maxPageDocumentBytes, maxPageSections, pageDefinitions, pageDestinations, pageFieldLabels,
   pageImages, pageSectionLabels, pageSectionTemplates, parsePageDocument, serializeArticleMarkdown,
   serializePageDocument, validatePageDocument,
@@ -106,6 +107,66 @@ describe('bounded page document registry and defaults', () => {
     expect(codingcraft.sections.filter(section => ['page-hero', 'cta'].includes(section.kind))
       .every(section => section.content.primaryTo === 'https://codingcraft.pixelsia.net/login')).toBe(true);
     expect(codingcraft.sections.some(section => ['login-form', 'register-form'].includes(section.kind))).toBe(false);
+  });
+});
+
+describe('multiline page content', () => {
+  it('classifies prose separately from button labels, links, images and metadata across the registry', () => {
+    const multiline = new Set([
+      'eyebrow', 'title', 'description', 'body', 'note', 'placeholder', 'cardTitle', 'cardBody',
+      'emptyTitle', 'emptyDescription', 'emailTitle', 'emailDescription', 'emailNote',
+      'discordTitle', 'discordDescription', 'discordNote', 'itemTitle', 'itemBody',
+      ...Array.from({ length: 6 }, (_, index) => {
+        const number = index + 1;
+        return [`item${number}`, `item${number}Title`, `item${number}Body`, `question${number}`, `answer${number}`];
+      }).flat(),
+    ]);
+    for (const kind of Object.keys(pageSectionTemplates) as PageSectionKind[]) {
+      for (const key of Object.keys(pageSectionTemplates[kind].content)) {
+        expect(isMultilinePageField(kind, key), `${kind}.${key}`).toBe(multiline.has(key) || (kind === 'hero' && key === 'brand'));
+      }
+    }
+    expect(isMultilinePageField('hero', 'brand')).toBe(true);
+    expect(isMultilinePageField('article-meta', 'brand')).toBe(false);
+    for (const key of ['primaryLabel', 'secondaryLabel', 'imageAlt', 'emailLabel', 'emailButtonLabel', 'copyLabel', 'copiedLabel',
+      'discordLabel', 'passwordLabel', 'rankLabel', 'playerLabel', 'scoreLabel', 'slug', 'author', 'publishedAt',
+      'publicationStatus', 'primaryTo', 'secondaryTo', 'image', 'item1Icon']) {
+      expect(isMultilinePageField('page-hero', key), key).toBe(false);
+    }
+  });
+
+  it.each(pageDefinitions)('keeps LF, CRLF, blank lines and literal HTML intact in $id JSON', ({ id }) => {
+    for (const newline of ['\n', '\r\n']) {
+      const document = createDefaultPageDocument(id);
+      const text = `  一行目${newline}二行目${newline}${newline}<br><script>alert("text")</script> と \\n  `;
+      for (const section of document.sections) {
+        for (const key of Object.keys(section.content)) {
+          if (isMultilinePageField(section.kind, key)) section.content[key] = text;
+        }
+      }
+      expect(validatePageDocument(document, id)).toEqual(document);
+      const json = serializePageDocument(document);
+      expect(json).toContain(JSON.stringify(text));
+      expect(JSON.parse(json)).toEqual(document);
+      const parsed = parsePageDocument(json, id);
+      expect(parsed).toEqual(document);
+      expect(serializePageDocument(parsed)).toBe(json);
+      for (const section of parsed.sections) {
+        for (const [key, value] of Object.entries(section.content)) {
+          if (isMultilinePageField(section.kind, key)) expect(value, `${id}.${section.kind}.${key}`).toBe(text);
+        }
+      }
+    }
+  });
+
+  it('preserves existing single-line-control values without a schema migration or newline normalization', () => {
+    const document = createDefaultPageDocument('article-draft');
+    const original = '既存の投稿者\r\n次の行\n\n<br> は文字列';
+    document.sections[0]!.content.author = original;
+    expect(isMultilinePageField('article-meta', 'author')).toBe(false);
+    expect(validatePageDocument(document).sections[0]!.content.author).toBe(original);
+    expect(parsePageDocument(serializePageDocument(document))).toEqual(document);
+    expect(document.version).toBe(1);
   });
 });
 

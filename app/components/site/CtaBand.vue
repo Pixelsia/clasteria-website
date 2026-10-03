@@ -15,13 +15,13 @@ defineProps<{
     <UContainer class="py-14">
       <div class="site-reveal grid gap-8 md:grid-cols-3 md:items-center">
         <div class="md:col-span-2">
-          <p class="text-xs font-black uppercase tracking-widest text-primary-300">
+          <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-300">
             {{ eyebrow }}
           </p>
-          <h2 class="mt-4 text-3xl font-black leading-tight md:text-5xl">
+          <h2 class="whitespace-pre-line mt-4 text-3xl font-black leading-tight md:text-5xl">
             {{ title }}
           </h2>
-          <p class="mt-5 max-w-3xl leading-8 text-neutral-200">
+          <p class="whitespace-pre-line mt-5 max-w-3xl leading-8 text-neutral-200">
             {{ description }}
           </p>
         </div>

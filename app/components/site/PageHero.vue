@@ -24,13 +24,13 @@ defineProps<{
 
     <UContainer class="flex min-h-96 items-center justify-center py-24">
       <div class="site-reveal mx-auto flex max-w-4xl flex-col items-center gap-6 text-center">
-        <p class="text-xs font-black uppercase tracking-widest text-primary-300">
+        <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-300">
           {{ eyebrow }}
         </p>
-        <h1 class="text-4xl font-black leading-tight md:text-6xl">
+        <h1 class="whitespace-pre-line text-4xl font-black leading-tight md:text-6xl">
           {{ title }}
         </h1>
-        <p class="max-w-2xl text-base leading-8 text-neutral-200 md:text-lg">
+        <p class="whitespace-pre-line max-w-2xl text-base leading-8 text-neutral-200 md:text-lg">
           {{ description }}
         </p>
         <div

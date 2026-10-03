@@ -8,10 +8,10 @@ defineProps<{ content: Record<string, string> }>();
     data-page-container
   >
     <div class="site-reveal mx-auto max-w-3xl rounded-lg border border-neutral-200 bg-white p-6 md:p-10">
-      <p class="text-xs font-black uppercase tracking-widest text-primary-600">
+      <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-600">
         {{ content.eyebrow }}
       </p>
-      <h2 class="mt-3 text-3xl font-black text-neutral-950">
+      <h2 class="whitespace-pre-line mt-3 text-3xl font-black text-neutral-950">
         {{ content.title }}
       </h2>
       <p class="mt-4 whitespace-pre-line leading-8 text-neutral-700">

@@ -12,10 +12,10 @@ const items = computed(() => Array.from({ length: 3 }, (_, index) => ({
     data-page-container
   >
     <div class="site-reveal rounded-lg border border-neutral-200 bg-white p-6 text-center md:p-10">
-      <p class="text-xs font-black uppercase tracking-widest text-primary-600">
+      <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-600">
         {{ content.eyebrow }}
       </p>
-      <h2 class="mt-3 text-3xl font-black text-neutral-950">
+      <h2 class="whitespace-pre-line mt-3 text-3xl font-black text-neutral-950">
         {{ content.title }}
       </h2>
       <p class="mx-auto mt-4 max-w-3xl whitespace-pre-line leading-8 text-neutral-700">
@@ -30,10 +30,10 @@ const items = computed(() => Array.from({ length: 3 }, (_, index) => ({
           :key="index"
           class="rounded-lg border border-neutral-200 bg-neutral-50 p-5"
         >
-          <p class="font-black text-neutral-950">
+          <p class="whitespace-pre-line font-black text-neutral-950">
             {{ item.title }}
           </p>
-          <p class="mt-2 text-sm leading-6 text-neutral-600">
+          <p class="whitespace-pre-line mt-2 text-sm leading-6 text-neutral-600">
             {{ item.body }}
           </p>
         </div>

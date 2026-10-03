@@ -25,10 +25,10 @@ const items = computed(() => Array.from({ length: 2 }, (_, index) => ({
       />
     </div>
     <div class="site-reveal flex flex-col gap-5">
-      <p class="text-xs font-black uppercase tracking-widest text-primary-600">
+      <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-600">
         {{ content.eyebrow }}
       </p>
-      <h2 class="text-3xl font-black leading-tight text-neutral-950 md:text-5xl">
+      <h2 class="whitespace-pre-line text-3xl font-black leading-tight text-neutral-950 md:text-5xl">
         {{ content.title }}
       </h2>
       <p class="whitespace-pre-line leading-8 text-neutral-700">
@@ -43,10 +43,10 @@ const items = computed(() => Array.from({ length: 2 }, (_, index) => ({
           :key="index"
           class="rounded-lg border border-neutral-200 bg-white p-4"
         >
-          <h3 class="font-black text-neutral-950">
+          <h3 class="whitespace-pre-line font-black text-neutral-950">
             {{ item.title }}
           </h3>
-          <p class="mt-2 text-sm leading-7 text-neutral-700">
+          <p class="whitespace-pre-line mt-2 text-sm leading-7 text-neutral-700">
             {{ item.body }}
           </p>
         </div>
@@ -61,10 +61,10 @@ const items = computed(() => Array.from({ length: 2 }, (_, index) => ({
         :key="index"
         class="rounded-lg border border-neutral-200 bg-white p-6"
       >
-        <h3 class="text-xl font-black text-neutral-950">
+        <h3 class="whitespace-pre-line text-xl font-black text-neutral-950">
           {{ item.title }}
         </h3>
-        <p class="mt-3 leading-7 text-neutral-700">
+        <p class="whitespace-pre-line mt-3 leading-7 text-neutral-700">
           {{ item.body }}
         </p>
       </div>

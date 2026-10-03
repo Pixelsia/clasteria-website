@@ -14,15 +14,15 @@ const alignmentClass = computed(() => props.align === 'center' ? 'mx-auto text-c
 
 <template>
   <div :class="['flex max-w-3xl flex-col gap-4', alignmentClass]">
-    <p class="text-xs font-black uppercase tracking-widest text-primary-600">
+    <p class="whitespace-pre-line text-xs font-black uppercase tracking-widest text-primary-600">
       {{ eyebrow }}
     </p>
-    <h2 class="text-3xl font-black leading-tight text-neutral-950 md:text-5xl">
+    <h2 class="whitespace-pre-line text-3xl font-black leading-tight text-neutral-950 md:text-5xl">
       {{ title }}
     </h2>
     <p
       v-if="description"
-      class="text-base leading-8 text-neutral-700 md:text-lg"
+      class="whitespace-pre-line text-base leading-8 text-neutral-700 md:text-lg"
     >
       {{ description }}
     </p>

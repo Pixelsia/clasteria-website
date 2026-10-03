@@ -19,12 +19,12 @@ defineProps<{ content: Record<string, string> }>();
         <li
           v-for="index in 3"
           :key="index"
-          class="rounded-lg border border-neutral-200 bg-white p-5"
+          class="whitespace-pre-line rounded-lg border border-neutral-200 bg-white p-5"
         >
           {{ content[`item${index}`] }}
         </li>
       </ul>
-      <p class="mt-5 text-sm leading-7 text-neutral-600">
+      <p class="whitespace-pre-line mt-5 text-sm leading-7 text-neutral-600">
         {{ content.note }}
       </p>
     </div>

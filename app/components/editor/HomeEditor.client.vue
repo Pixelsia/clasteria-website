@@ -9,7 +9,7 @@ import {
   createDefaultPageDocument, createPageSection, pageFieldLabels,
   pageImages, pageSectionLabels, maxPageDocumentBytes, maxPageSections, parsePageDocument,
   serializePageDocument, validatePageDocument, pageDefinitions, allowedPageSectionKinds,
-  pageDestinations, isRequiredPageSection, pageIcons, serializeArticleMarkdown,
+  pageDestinations, isRequiredPageSection, pageIcons, serializeArticleMarkdown, isMultilinePageField,
 } from '~/utils/pageDocument';
 import { homeImages } from '~/utils/homeDocument';
 import type { PageDocument, PageSection, PageSectionKind, PageId } from '~/utils/pageDocument';
@@ -1141,15 +1141,33 @@ onBeforeUnmount(() => {
               </option>
             </select>
             <textarea
-              v-else
+              v-else-if="isMultilinePageField(selected.kind, key)"
               :id="`editor-field-${key}`"
               class="editor-input"
-              :rows="['description', 'cardBody', 'title'].includes(key) ? 3 : 2"
+              :aria-describedby="`editor-field-${key}-hint`"
+              rows="3"
               :value="value"
               maxlength="2000"
               :readonly="fixedField(key)"
               @input="changeField(key, ($event.target as HTMLTextAreaElement).value)"
             />
+            <input
+              v-else
+              :id="`editor-field-${key}`"
+              class="editor-input"
+              type="text"
+              :value="value"
+              maxlength="2000"
+              :readonly="fixedField(key)"
+              @input="changeField(key, ($event.target as HTMLInputElement).value)"
+            >
+            <p
+              v-if="isMultilinePageField(selected.kind, key)"
+              :id="`editor-field-${key}-hint`"
+              class="mt-1 text-xs leading-5 text-neutral-600"
+            >
+              Enter キーで改行できます。改行はプレビューにも反映されます。
+            </p>
           </div>
           <h3 class="mb-3 mt-6 font-black">
             色と余白

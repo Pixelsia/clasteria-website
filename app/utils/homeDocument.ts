@@ -66,6 +66,7 @@ export const homeFieldLabels: Record<string, string> = {
 export const homeImages = [
   { label: 'Home メインビジュアル', value: '/images/clasteria/home-main-visual.png' },
   { label: 'Clasteria の風景', value: '/images/clasteria/clasteria-hero.jpg' },
+  { label: 'ネザーゲートのある広場', value: '/images/clasteria/portal-plaza.png' },
 ];
 
 export function createHomeSection(kind: HomeSectionKind, id: string): HomeSection {

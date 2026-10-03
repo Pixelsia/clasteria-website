@@ -154,6 +154,41 @@ try {
     if (screenshotDirectory) await page.screenshot({ path: `${screenshotDirectory}/editor-${id}-${width}.png`, fullPage: true });
   }
 
+  async function checkPlazaImage(original) {
+    const hero = original.sections.find(section => ['hero', 'page-hero'].includes(section.kind));
+    if (!hero) return;
+    const src = '/images/clasteria/portal-plaza.png';
+    const picker = page.getByLabel('背景画像', { exact: true });
+    assert.equal(await picker.locator(`option[value="${src}"]`).innerText(), 'ネザーゲートのある広場');
+    await picker.selectOption(src);
+    async function loaded(image) {
+      await image.waitFor();
+      await eventually(async () => {
+        assert.equal(new URL(await image.evaluate(element => element.currentSrc)).pathname, src);
+      });
+      await image.evaluate(element => element.decode());
+      assert.deepEqual(await image.evaluate(element => [element.naturalWidth, element.naturalHeight]), [1920, 1009]);
+    }
+    await loaded(canvas.locator(`[data-editor-section="${hero.id}"] img`));
+    const draft = await exportDraft(original.page);
+    assert.equal(draft.sections.find(section => section.id === hero.id).content.image, src);
+    await importDraft(draft);
+    await eventually(async () => assert.deepEqual(await stored(original.page), draft));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await ready(original.page);
+    assert.equal(await picker.inputValue(), src);
+    await loaded(canvas.locator(`[data-editor-section="${hero.id}"] img`));
+    await page.getByRole('button', { name: 'プレビュー', exact: true }).click();
+    await page.waitForURL(url => url.pathname === '/editor/preview');
+    await loaded(page.locator(`[data-document-page="${original.page}"] img[src="${src}"]`).first());
+    if (screenshotDirectory) await page.screenshot({ path: `${screenshotDirectory}/plaza-preview-${original.page}.png`, fullPage: true });
+    await page.getByRole('link', { name: '編集に戻る', exact: true }).click();
+    await ready(original.page);
+    await picker.selectOption(hero.content.image);
+    await eventually(async () => assert.deepEqual(await stored(original.page), original));
+    assert.deepEqual(await exportDraft(original.page), original, 'image QA restores the isolated original draft');
+  }
+
   const response = await page.goto(`${baseURL}/editor`, { waitUntil: 'domcontentloaded' });
   assert.equal(response.status(), 200);
   await ready('home');
@@ -172,6 +207,7 @@ try {
     await checkCanvas(document);
     await checkLayout(definition.id, 1440);
     await checkLayout(definition.id, 390);
+    await checkPlazaImage(document);
     if (definition.id === 'login') {
       assert.equal(await canvas.locator('input:not([disabled])').count(), 0, 'login fields are inactive');
       assert.ok(await canvas.getByRole('button', { name: document.sections.find(item => item.kind === 'login-form').content.primaryLabel }).isDisabled());

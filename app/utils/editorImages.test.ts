@@ -1,5 +1,7 @@
 import { readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { resolve, sep } from 'node:path';
+import sharp from 'sharp';
 import { createImage } from '@nuxt/image/runtime';
 import ipxProvider from '@nuxt/image/runtime/providers/ipx';
 import noneProvider from '@nuxt/image/runtime/providers/none';
@@ -129,6 +131,21 @@ function expectRawImage(call: ImageCall, src: string) {
 }
 
 describe('editor image delivery', () => {
+  it('keeps the supplied plaza PNG intact and makes it an optional shared choice', async () => {
+    const value = '/images/clasteria/portal-plaza.png';
+    const expected = { label: 'ネザーゲートのある広場', value };
+    expect(homeDocument.homeImages).toContainEqual(expected);
+    expect(pageImages).toContainEqual(expected);
+    const bytes = readFileSync(resolve(publicRoot, `.${value}`));
+    expect(bytes.byteLength).toBe(2_868_100);
+    expect(createHash('sha256').update(bytes).digest('hex'))
+      .toBe('cc59fab33d1ab36da0423400942919b725b7ac7ef59cff39fe7d0cac3a5837a2');
+    expect(await sharp(bytes).metadata()).toMatchObject({ format: 'png', width: 1920, height: 1009 });
+    for (const page of pageDefinitions) {
+      expect(createDefaultPageDocument(page.id).sections.some(section => section.content.image === value)).toBe(false);
+    }
+  });
+
   it('registers the none provider without changing the public default', () => {
     const path = resolve(appRoot, '../nuxt.config.ts');
     const source = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.ES2022, true);

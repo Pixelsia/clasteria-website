@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultHomeDocument, serializeHomeDocument } from '../../app/utils/homeDocument';
-import { createDefaultPageDocument, pageDefinitions } from '../../app/utils/pageDocument';
+import { createDefaultPageDocument, pageDefinitions, parsePageDocument, serializePageDocument } from '../../app/utils/pageDocument';
 import type { PageId } from '../../app/utils/pageDocument';
+import { parseServerPageDraftResponse } from '../../app/utils/pageDraftClient';
 import { handleDraftRequest, multiPageDraftsSchemaSql } from './drafts';
 import type { DraftEnvironment } from './drafts';
 
@@ -70,6 +71,22 @@ describe('server draft API with real SQLite conditional writes', () => {
     expect(await (await handleDraftRequest(request(), env, scope)).json()).toEqual(saved);
     expect((await (await handleDraftRequest(put(1), env, scope)).json()).draft.revision).toBe(2);
   });
+  it.each(pageDefinitions.filter(({ id }) => id !== 'article-draft'))(
+    'roundtrips the added plaza image through JSON and validated server storage for $id without changing defaults', async ({ id }) => {
+      const original = createDefaultPageDocument(id);
+      const document = createDefaultPageDocument(id);
+      for (const section of document.sections) {
+        if ('image' in section.content) section.content.image = '/images/clasteria/portal-plaza.png';
+      }
+      const imported = parsePageDocument(serializePageDocument(document), id);
+      expect(imported).toEqual(document);
+      const saved = await handleDraftRequest(request('PUT', { document: imported, baseRevision: 0 }, {}, id), env, scope);
+      expect(saved.status).toBe(200);
+      const response = await (await handleDraftRequest(request('GET', undefined, {}, id), env, scope)).json();
+      expect(parseServerPageDraftResponse(response, id)?.document).toEqual(document);
+      expect(createDefaultPageDocument(id)).toEqual(original);
+    },
+  );
   it('rejects stale and concurrent updates without losing the first accepted save', async () => {
     const responses = await Promise.all([handleDraftRequest(put(), env, scope), handleDraftRequest(put(), env, scope)]);
     expect(responses.map(response => response.status).sort()).toEqual([200, 409]);

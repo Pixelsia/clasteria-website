@@ -13,8 +13,8 @@ useSeoMeta({
       eyebrow="REGISTER"
       title="購入・登録は Coming soon"
       description="README では、購入・登録は今後実装で、初期公開では飛べるけど Coming soon とする指定があります。プラン、課金状態、支払い方法、サブスクリプション管理の導線は未決です。"
-      image="/images/clasteria/clasteria-hero.jpg"
-      image-alt="購入・登録 Coming soon のイメージ"
+      image="/images/clasteria/portal-plaza.png"
+      image-alt="ネザーゲートのある広場"
     >
       <template #actions>
         <UButton

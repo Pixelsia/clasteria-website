@@ -12,7 +12,7 @@ import type { Component } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { compileScript, parse } from 'vue/compiler-sfc';
 import { createEditorSectionVNode } from '../composables/editorSection';
-import { createDefaultPageDocument, createPageSection, pageDefinitions, pageImages } from './pageDocument';
+import { createDefaultPageDocument, createPageSection, pageDefinitions, pageImages, parsePageDocument, serializePageDocument } from './pageDocument';
 import type { PageDocument, PageSection } from './pageDocument';
 import * as homeDocument from './homeDocument';
 import * as siteContent from './siteContent';
@@ -146,14 +146,26 @@ describe('editor image delivery', () => {
     expect(document).toEqual(original);
   });
 
-  it.each(['canvas', 'preview', 'public'] as const)('keeps other page hero styling unchanged in %s', async (view) => {
-    const { html } = await renderImages(view, createDefaultPageDocument('support'));
-    expect(html).toContain('class="size-full object-cover opacity-35"');
-    expect(html).toContain('from-neutral-950/80 via-neutral-950/60 to-neutral-950/85');
-    expect(html).not.toContain('opacity-75');
+  it.each(['canvas', 'preview', 'public'] as const)('matches Home brightness for every other page hero in %s', async (view) => {
+    for (const page of pageDefinitions.filter(page => !['home', 'article-draft'].includes(page.id))) {
+      const document = createDefaultPageDocument(page.id);
+      const hero = document.sections.find(section => section.kind === 'page-hero')!;
+      hero.style = { accent: '#aabbcc', background: '#112233', spacing: 'roomy' };
+      const original = structuredClone(document);
+      const { html } = await renderImages(view, withSections(page.id, [hero]));
+      expect(html).toContain('class="size-full object-cover opacity-75"');
+      expect(html).toContain('from-neutral-950/55 via-neutral-950/40 to-neutral-950/65');
+      expect(html).toContain('--page-background-overlay:color-mix(in srgb, #112233 55%, transparent)');
+      expect(html).toContain('--page-background-overlay-middle:color-mix(in srgb, #112233 40%, transparent)');
+      expect(html).toContain('--page-background-overlay-end:color-mix(in srgb, #112233 65%, transparent)');
+      expect(html).toContain('--page-accent:#aabbcc;--page-background:#112233');
+      expect(html).toContain('page-spacing-roomy');
+      expect(html).not.toContain('opacity-35');
+      expect(document).toEqual(original);
+    }
   });
 
-  it('keeps the supplied plaza PNG intact and makes it an optional shared choice', async () => {
+  it('keeps the supplied plaza PNG intact and uses it for all default page heroes only', async () => {
     const value = '/images/clasteria/portal-plaza.png';
     const expected = { label: 'ネザーゲートのある広場', value };
     expect(homeDocument.homeImages).toContainEqual(expected);
@@ -163,8 +175,39 @@ describe('editor image delivery', () => {
     expect(createHash('sha256').update(bytes).digest('hex'))
       .toBe('cc59fab33d1ab36da0423400942919b725b7ac7ef59cff39fe7d0cac3a5837a2');
     expect(await sharp(bytes).metadata()).toMatchObject({ format: 'png', width: 1920, height: 1009 });
+    let heroCount = 0;
     for (const page of pageDefinitions) {
-      expect(createDefaultPageDocument(page.id).sections.some(section => section.content.image === value)).toBe(false);
+      const document = createDefaultPageDocument(page.id);
+      for (const section of document.sections) {
+        if (['hero', 'page-hero'].includes(section.kind)) {
+          expect(section.content.image, page.id).toBe(value);
+          heroCount++;
+        }
+        else {
+          expect(section.content.image, `${page.id}/${section.id}`).not.toBe(value);
+        }
+      }
+    }
+    expect(heroCount).toBe(9);
+    expect(createPageSection('hero', 'new-home-hero').content.image).toBe(value);
+    expect(createPageSection('page-hero', 'new-page-hero').content.image).toBe(value);
+    expect(createDefaultPageDocument('codingcraft').sections.find(section => section.kind === 'split-content')?.content.image)
+      .toBe('/images/clasteria/home-main-visual.png');
+    expect(siteContent.featureCards.map(card => card.image))
+      .toEqual(['/images/clasteria/minigame.jpg', '/images/clasteria/clasteria-hero.jpg']);
+  });
+
+  it.each(['canvas', 'preview', 'public'] as const)('preserves saved custom hero images, text and style in %s', async (view) => {
+    for (const page of pageDefinitions.filter(page => page.id !== 'article-draft')) {
+      const document = createDefaultPageDocument(page.id);
+      const hero = document.sections.find(section => ['hero', 'page-hero'].includes(section.kind))!;
+      Object.assign(hero.content, { image: '/images/clasteria/home-main-visual.png', title: '保存済みの見出し' });
+      hero.style = { accent: '#aabbcc', background: '#112233', spacing: 'compact' };
+      const imported = parsePageDocument(serializePageDocument(document), page.id);
+      const { calls, html } = await renderImages(view, withSections(page.id, [imported.sections[0]!]));
+      expect(calls[0]?.src).toBe('/images/clasteria/home-main-visual.png');
+      expect(html).toContain('保存済みの見出し');
+      expect(imported).toEqual(document);
     }
   });
 

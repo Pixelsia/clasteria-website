@@ -13,8 +13,8 @@ useSeoMeta({
       eyebrow="LEADERBOARD"
       title="各ゲームの Top10 枠"
       description="HP 仕様書では、リーダーボードは各ゲームのランキング Top10 を紹介するページです。データソース、集計期間、更新頻度は未決のため、初期実装では TODO として枠だけを表示します。"
-      image="/images/clasteria/minigame.jpg"
-      image-alt="リーダーボードのイメージ"
+      image="/images/clasteria/portal-plaza.png"
+      image-alt="ネザーゲートのある広場"
     >
       <template #actions>
         <UButton

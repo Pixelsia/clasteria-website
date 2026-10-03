@@ -13,8 +13,8 @@ useSeoMeta({
       eyebrow="ONIGOKKO"
       title="投票でルールを決めて、鬼から逃げ切る"
       description="鬼ごっこは、Clasteria のメインワールドから参加し、ゲームルール投票とマップ投票で遊び方を決めたあと、鬼役のプレイヤーから制限時間まで逃げ切るミニゲームです。"
-      image="/images/clasteria/minigame.jpg"
-      image-alt="鬼ごっこのイメージ"
+      image="/images/clasteria/portal-plaza.png"
+      image-alt="ネザーゲートのある広場"
     >
       <template #actions>
         <UButton

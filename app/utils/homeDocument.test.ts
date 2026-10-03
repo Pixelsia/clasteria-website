@@ -46,6 +46,16 @@ describe('home document defaults', () => {
     }
   });
 
+  it('keeps the reviewed Home export copy and new-section defaults aligned', () => {
+    const document = createDefaultHomeDocument();
+    expect(document.sections[0]!.content).toMatchObject({
+      title: '遊びから\nつながる世界へ', primaryLabel: 'お知らせ', image: '/images/clasteria/portal-plaza.png',
+    });
+    for (const section of document.sections) {
+      expect(createHomeSection(section.kind, section.id)).toEqual(section);
+    }
+  });
+
   it('creates independent documents, sections, content, and styles', () => {
     const original = createDefaultHomeDocument();
     const edited = createDefaultHomeDocument();

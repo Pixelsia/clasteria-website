@@ -39,9 +39,9 @@ const content = computed(() => props.section.content);
     :style="{
       '--page-accent': section.style.accent,
       '--page-background': section.style.background,
-      '--page-background-overlay': `${section.style.background}cc`,
-      '--page-background-overlay-middle': `${section.style.background}99`,
-      '--page-background-overlay-end': `${section.style.background}d9`,
+      '--page-background-overlay': `color-mix(in srgb, ${section.style.background} 55%, transparent)`,
+      '--page-background-overlay-middle': `color-mix(in srgb, ${section.style.background} 40%, transparent)`,
+      '--page-background-overlay-end': `color-mix(in srgb, ${section.style.background} 65%, transparent)`,
     }"
   >
     <SitePageHero

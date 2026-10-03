@@ -25,10 +25,10 @@ export const homeSectionTemplates: Record<HomeSectionKind, Omit<HomeSection, 'id
   hero: {
     kind: 'hero',
     content: {
-      eyebrow: 'CLASTERIA OFFICIAL', title: '遊びから、\nつながる世界へ。', brand: 'Clasteria',
+      eyebrow: 'CLASTERIA OFFICIAL', title: '遊びから\nつながる世界へ', brand: 'Clasteria',
       description: 'Minecraft の世界を舞台に、\n新しい体験をつくる Pixelsia のプロジェクト。',
-      image: '/images/clasteria/home-main-visual.png', imageAlt: '',
-      primaryLabel: 'お知らせを見る', primaryTo: '/articles', secondaryLabel: 'お問い合わせ', secondaryTo: '/support',
+      image: '/images/clasteria/portal-plaza.png', imageAlt: '',
+      primaryLabel: 'お知らせ', primaryTo: '/articles', secondaryLabel: 'お問い合わせ', secondaryTo: '/support',
     },
     style: { accent: '#7bf1a8', background: '#030712', spacing: 'normal' },
   },

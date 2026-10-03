@@ -18,9 +18,9 @@ defineProps<{
       alt=""
       class="absolute inset-0 -z-10 block size-full"
       loading="eager"
-      :img-attrs="{ class: 'size-full object-cover opacity-35' }"
+      :img-attrs="{ class: 'size-full object-cover opacity-75' }"
     />
-    <div class="absolute inset-0 -z-10 bg-gradient-to-b from-neutral-950/80 via-neutral-950/60 to-neutral-950/85" />
+    <div class="absolute inset-0 -z-10 bg-gradient-to-b from-neutral-950/55 via-neutral-950/40 to-neutral-950/65" />
 
     <UContainer class="flex min-h-96 items-center justify-center py-24">
       <div class="site-reveal mx-auto flex max-w-4xl flex-col items-center gap-6 text-center">

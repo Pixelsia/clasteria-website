@@ -13,8 +13,8 @@ useSeoMeta({
       eyebrow="LOGIN"
       title="ログイン機能は Coming soon"
       description="README では、ログインは今後実装で、初期公開では飛べるけど Coming soon とする指定があります。ID server、Google ログイン、Minecraft OTP 連携の画面分担は未決です。"
-      image="/images/clasteria/home-main-visual.png"
-      image-alt="ログイン Coming soon のイメージ"
+      image="/images/clasteria/portal-plaza.png"
+      image-alt="ネザーゲートのある広場"
     >
       <template #actions>
         <UButton

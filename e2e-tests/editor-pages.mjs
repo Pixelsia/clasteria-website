@@ -158,6 +158,7 @@ try {
     const hero = original.sections.find(section => ['hero', 'page-hero'].includes(section.kind));
     if (!hero) return;
     const src = '/images/clasteria/portal-plaza.png';
+    assert.equal(hero.content.image, src, `${original.page}: new base hero uses the plaza image`);
     const picker = page.getByLabel('背景画像', { exact: true });
     assert.equal(await picker.locator(`option[value="${src}"]`).innerText(), 'ネザーゲートのある広場');
     await picker.selectOption(src);
@@ -168,10 +169,14 @@ try {
       });
       await image.evaluate(element => element.decode());
       assert.deepEqual(await image.evaluate(element => [element.naturalWidth, element.naturalHeight]), [1920, 1009]);
-      if (hero.kind === 'hero') {
-        assert.equal(await image.evaluate(element => getComputedStyle(element).opacity), '0.75', 'Home retains more of the selected image');
-        const overlay = image.locator('xpath=ancestor::section').locator(':scope > .bg-gradient-to-b');
-        assert.match(await overlay.getAttribute('class'), /from-neutral-950\/55 via-neutral-950\/40 to-neutral-950\/65/, 'Home uses the same lighter overlay in canvas and preview');
+      assert.equal(await image.evaluate(element => getComputedStyle(element).opacity), '0.75', 'all page heroes use the Home image opacity');
+      const overlay = image.locator('xpath=ancestor::section').locator(':scope > .bg-gradient-to-b');
+      assert.match(await overlay.getAttribute('class'), /from-neutral-950\/55 via-neutral-950\/40 to-neutral-950\/65/, 'all page heroes use the Home overlay classes');
+      if (hero.kind === 'page-hero') {
+        const gradient = await overlay.evaluate(element => getComputedStyle(element).backgroundImage);
+        assert.match(gradient, /0\.55/, 'editable background retains the lighter top opacity');
+        assert.match(gradient, /0\.4(?:[) ]|,)/, 'editable background retains the lighter middle opacity');
+        assert.match(gradient, /0\.65/, 'editable background retains the lighter bottom opacity');
       }
     }
     await loaded(canvas.locator(`[data-editor-section="${hero.id}"] img`));

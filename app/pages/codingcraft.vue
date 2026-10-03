@@ -13,8 +13,8 @@ useSeoMeta({
       eyebrow="CODINGCRAFT"
       title="Minecraft とビジュアルプログラミングで学ぶ"
       description="CodingCraft は、ブロックを用いたビジュアルプログラミングと Minecraft でプログラミングを学習するコンテンツです。コース学習、サンドボックス、サバイバル、対戦モードの候補が仕様に整理されています。"
-      image="/images/clasteria/codingcraft.jpg"
-      image-alt="CodingCraft のイメージ"
+      image="/images/clasteria/portal-plaza.png"
+      image-alt="ネザーゲートのある広場"
     >
       <template #actions>
         <UButton

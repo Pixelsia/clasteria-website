@@ -13,8 +13,8 @@ useSeoMeta({
       eyebrow="KAKURENBO"
       title="ブロックに擬態し、鬼の探索から隠れる"
       description="かくれんぼは、メインワールドから参加し、待機部屋で人数確認とマップ投票を行ったあと、逃走者がブロックに擬態して隠れ、鬼が制限時間内に捕獲を狙うミニゲームです。"
-      image="/images/clasteria/clasteria-hero.jpg"
-      image-alt="かくれんぼのイメージ"
+      image="/images/clasteria/portal-plaza.png"
+      image-alt="ネザーゲートのある広場"
     >
       <template #actions>
         <UButton

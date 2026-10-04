@@ -55,6 +55,45 @@ beforeEach(() => {
 afterEach(() => db.close());
 
 describe('server draft API with real SQLite conditional writes', () => {
+  it.each(['home', 'support', 'access'] as const)('reads legacy Discord in %s without writing storage, then updates only on explicit PUT', async (page) => {
+    const legacy = 'https://discord.gg/TwTPa4Yp4h';
+    const document = createDefaultPageDocument(page);
+    Object.assign(document.sections[0]!.content, {
+      title: '  保存済みの見出し\r\n二行目  ', description: `本文中の ${legacy} は保持`,
+      primaryTo: legacy, image: '/images/clasteria/portal-plaza.png',
+    });
+    document.sections[0]!.style = { accent: '#AaBbCc', background: '#123456', button: '#654321', spacing: 'roomy' };
+    const contact = document.sections.find(section => section.kind === 'support-contact');
+    if (contact) contact.content.discordTo = legacy;
+    document.sections.reverse();
+    const raw = JSON.stringify(document, null, 1);
+    const table = page === 'home' ? 'editor_drafts' : page === 'access' ? 'editor_connection_drafts' : 'editor_page_drafts';
+    if (page === 'access') db.exec(connectionDraftsSchemaSql);
+    db.prepare(`INSERT INTO ${table} (scope, owner, page, document, revision, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(scope, 'verified-owner', page, raw, 7, '2026-10-02T19:00:00.000Z');
+    const snapshot = () => db.prepare(`SELECT document, revision, updated_at FROM ${table}`).all();
+    const before = snapshot();
+    const writesBefore = db.prepare('SELECT total_changes() AS count').get();
+    const loaded = await handleDraftRequest(request('GET', undefined, {}, page), env, scope);
+    expect(loaded.status).toBe(200);
+    const draft = parseServerPageDraftResponse(await loaded.json(), page)!;
+    expect(draft.document).toEqual(parsePageDocument(raw, page));
+    expect(draft.revision).toBe(7);
+    expect(snapshot()).toEqual(before);
+    expect(db.prepare('SELECT total_changes() AS count').get()).toEqual(writesBefore);
+    expect(JSON.stringify(document, null, 1)).toBe(raw);
+    const conflict = await handleDraftRequest(request('PUT', { document: draft.document, baseRevision: 6 }, {}, page), env, scope);
+    expect(conflict.status).toBe(409);
+    expect(snapshot()).toEqual(before);
+    const saved = await handleDraftRequest(request('PUT', { document: draft.document, baseRevision: 7 }, {}, page), env, scope);
+    expect(saved.status).toBe(200);
+    const result = parseServerPageDraftResponse(await saved.json(), page)!;
+    expect(result.revision).toBe(8);
+    expect(result.document).toEqual(draft.document);
+    expect(snapshot()).toEqual([{
+      document: serializePageDocument(draft.document), revision: 8, updated_at: result.updatedAt,
+    }]);
+  });
   it('exposes only the fixed editor page registry', () => {
     expect(pageDefinitions.map(({ id }) => id).sort()).toEqual([
       'home', 'support', 'articles', 'access', 'onigokko', 'kakurenbo', 'login', 'register', 'leaderboard', 'codingcraft', 'article-draft',

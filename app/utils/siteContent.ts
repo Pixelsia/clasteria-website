@@ -54,6 +54,11 @@ export const siteNavItems = [...primaryNavItems, ...externalNavItems];
 export const supportEmail = 'support@pixelsia.net';
 export const supportDiscord = 'https://discord.gg/fsts95chH5';
 
+// Normalize only the previously approved invitation in a copied draft, never arbitrary Discord URLs.
+export function normalizeDiscordDestination(value: string): string {
+  return value === 'https://discord.gg/TwTPa4Yp4h' ? supportDiscord : value;
+}
+
 export const relatedServices = [
   { label: 'CodingCraft', to: 'https://codingcraft.pixelsia.net/login' },
 ];

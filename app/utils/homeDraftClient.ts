@@ -1,4 +1,4 @@
-import { serializeHomeDocument, validateHomeDocument } from './homeDocument';
+import { parseHomeDocument, serializeHomeDocument, validateHomeDocument } from './homeDocument';
 import type { HomeDocument } from './homeDocument';
 
 export const homeDraftSyncStorageKey = 'clasteria:home-draft-server:v1';
@@ -97,7 +97,8 @@ export function restoreHomeDraftSyncState(state: HomeDraftClientState, json: str
   if (!json) return state;
   try {
     const stored: unknown = JSON.parse(json);
-    if (!stored || typeof stored !== 'object' || !('current' in stored) || stored.current !== state.current
+    if (!stored || typeof stored !== 'object' || !('current' in stored) || typeof stored.current !== 'string'
+      || serializeHomeDocument(parseHomeDocument(stored.current)) !== state.current
       || !('base' in stored)) return state;
     const base = parseServerHomeDraftResponse({ draft: stored.base });
     return { ...state, base };

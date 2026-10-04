@@ -1,4 +1,4 @@
-import { serializePageDocument, validatePageDocument } from './pageDocument';
+import { parsePageDocument, serializePageDocument, validatePageDocument } from './pageDocument';
 import type { PageDocument } from './pageDocument';
 
 export function pageStorageKeys(page: PageDocument['page']) {
@@ -104,7 +104,8 @@ export function restorePageDraftSyncState(state: PageDraftClientState, json: str
   if (!json) return state;
   try {
     const stored: unknown = JSON.parse(json);
-    if (!stored || typeof stored !== 'object' || !('current' in stored) || stored.current !== state.current
+    if (!stored || typeof stored !== 'object' || !('current' in stored) || typeof stored.current !== 'string'
+      || serializePageDocument(parsePageDocument(stored.current, JSON.parse(state.current).page)) !== state.current
       || !('base' in stored)) return state;
     const base = parseServerPageDraftResponse({ draft: stored.base }, JSON.parse(state.current).page);
     return { ...state, base };

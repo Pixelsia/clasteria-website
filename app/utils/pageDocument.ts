@@ -15,7 +15,7 @@ import {
 import type { HomeSectionKind, HomeSectionStyle } from './homeDocument';
 import {
   codingCraftFlow, faqItems, kakurenboFlow, leaderboardGroups,
-  onigokkoFlow, onigokkoRules, supportDiscord, supportEmail, unresolvedItems,
+  onigokkoFlow, onigokkoRules, supportDiscord, supportEmail, unresolvedItems, normalizeDiscordDestination,
 } from './siteContent';
 import type { InfoCard } from './siteContent';
 
@@ -329,8 +329,9 @@ export function validatePageDocument(input: unknown, expectedPage?: PageId): Pag
     const content = object(value.content, '文章');
     exactKeys(content, Object.keys(pageSectionTemplates[kind].content), '文章');
     const cleanContent: Record<string, string> = {};
-    for (const [key, field] of Object.entries(content)) {
-      if (typeof field !== 'string' || field.length > 2000 || Array.from(field).some(character => character.charCodeAt(0) < 32 && !['\t', '\n', '\r'].includes(character))) fail(`${pageFieldLabels[key] ?? key} が無効です。`);
+    for (const [key, storedField] of Object.entries(content)) {
+      if (typeof storedField !== 'string' || storedField.length > 2000 || Array.from(storedField).some(character => character.charCodeAt(0) < 32 && !['\t', '\n', '\r'].includes(character))) fail(`${pageFieldLabels[key] ?? key} が無効です。`);
+      const field = key.endsWith('To') ? normalizeDiscordDestination(storedField) : storedField;
       if (key.endsWith('To') && !destinations.has(field)) fail('リンクはこのページで使用できる移動先を選んでください。');
       if (key === 'image' && (!pageImages.some(image => image.value === field) || (kind === 'page-hero' && field === ''))) fail('画像は登録済みの素材を選んでください。');
       if (key.endsWith('Icon') && !pageIcons.some(icon => icon === field)) fail('アイコンは登録済みのものを選んでください。');

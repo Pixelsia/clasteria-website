@@ -1,4 +1,5 @@
 import homePage from './homePage.json' with { type: 'json' };
+import { normalizeDiscordDestination, supportDiscord } from './siteContent';
 
 export const homeDocumentVersion = 1;
 export const homeDraftStorageKey = 'clasteria:home-draft:v1';
@@ -97,7 +98,7 @@ function exactKeys(value: Record<string, unknown>, keys: string[], label: string
 
 export function isSafeHomeLink(value: string): boolean {
   // A small public-destination allowlist also prevents restoring unpublished routes.
-  return ['/', '/articles', '/support', '/access', 'https://codingcraft.pixelsia.net/login', 'https://discord.gg/fsts95chH5', 'mailto:support@pixelsia.net'].includes(value);
+  return ['/', '/articles', '/support', '/access', 'https://codingcraft.pixelsia.net/login', supportDiscord, 'mailto:support@pixelsia.net'].includes(value);
 }
 
 /** Optional button color preserves existing v1 files and server drafts byte semantics. */
@@ -130,8 +131,9 @@ export function validateHomeDocument(input: unknown): HomeDocument {
     const content = kind === 'hero' ? { ...sourceContent, ...Object.fromEntries(['serverAddress', 'serverNote', 'accessLabel', 'accessTo'].filter(key => !Object.hasOwn(sourceContent, key)).map(key => [key, homeSectionTemplates.hero.content[key]])) } : sourceContent;
     exactKeys(content, Object.keys(homeSectionTemplates[kind].content), '文章');
     const cleanContent: Record<string, string> = {};
-    for (const [key, field] of Object.entries(content)) {
-      if (typeof field !== 'string' || field.length > 2000 || Array.from(field).some(character => character.charCodeAt(0) < 32 && !['\t', '\n', '\r'].includes(character))) fail(`${homeFieldLabels[key] ?? key} が無効です。`);
+    for (const [key, storedField] of Object.entries(content)) {
+      if (typeof storedField !== 'string' || storedField.length > 2000 || Array.from(storedField).some(character => character.charCodeAt(0) < 32 && !['\t', '\n', '\r'].includes(character))) fail(`${homeFieldLabels[key] ?? key} が無効です。`);
+      const field = key.endsWith('To') ? normalizeDiscordDestination(storedField) : storedField;
       if (key.endsWith('To') && !isSafeHomeLink(field)) fail('リンクは公開済みの移動先を選んでください。');
       if (key === 'image' && !homeImages.some(image => image.value === field)) fail('画像は登録済みの素材を選んでください。');
       cleanContent[key] = field;

@@ -101,6 +101,9 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let canvasTimer: ReturnType<typeof setTimeout> | undefined;
 const destinations = pageDestinations(pageId);
 const iconOptions = pageIcons.map(icon => ({ label: icon.replace('i-heroicons-', ''), value: icon }));
+// Keep v1 action fields in saved JSON, but no longer offer controls for removed Home hero buttons.
+const editableContent = computed(() => Object.fromEntries(Object.entries(selected.value?.content ?? {})
+  .filter(([key]) => selected.value?.kind !== 'hero' || !['primaryLabel', 'primaryTo', 'secondaryLabel', 'secondaryTo'].includes(key))));
 const imageOptions = computed(() => pageId === 'home' ? homeImages : pageImages.filter(image => image.value || selected.value?.kind === 'split-content'));
 function fixedField(key: string) {
   return (selected.value?.kind === 'article-meta' && ['brand', 'publicationStatus'].includes(key))
@@ -1244,7 +1247,7 @@ onBeforeUnmount(() => {
             </UButton>
           </div>
           <div
-            v-for="(value, key) in selected.content"
+            v-for="(value, key) in editableContent"
             :key="`${selected.id}-${key}`"
             class="mb-4"
           >

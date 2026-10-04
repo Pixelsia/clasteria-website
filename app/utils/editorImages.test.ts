@@ -146,6 +146,23 @@ describe('editor image delivery', () => {
     expect(document).toEqual(original);
   });
 
+  it.each(['canvas', 'preview', 'public'] as const)('hides the removed Home hero actions in %s while preserving legacy draft settings and access', async (view) => {
+    const document = createDefaultPageDocument('home');
+    const hero = document.sections.find(section => section.kind === 'hero')!;
+    hero.content.primaryLabel = '旧お知らせボタン';
+    hero.content.secondaryLabel = '旧お問い合わせボタン';
+    const original = structuredClone(document);
+    const { html } = await renderImages(view, withSections('home', [hero]));
+    expect(html).not.toContain('旧お知らせボタン');
+    expect(html).not.toContain('旧お問い合わせボタン');
+    expect(html).not.toContain('to="/articles"');
+    expect(html).not.toContain('to="/support"');
+    expect(html).toContain('to="/access"');
+    expect(html).toContain('play.pixelsia.net');
+    expect(document).toEqual(original);
+    expect(parsePageDocument(serializePageDocument(document), 'home')).toEqual(original);
+  });
+
   it.each(['canvas', 'preview', 'public'] as const)('matches Home brightness for every other page hero in %s', async (view) => {
     for (const page of pageDefinitions.filter(page => !['home', 'article-draft'].includes(page.id))) {
       const document = createDefaultPageDocument(page.id);

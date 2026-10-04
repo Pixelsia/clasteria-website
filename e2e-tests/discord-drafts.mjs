@@ -33,6 +33,7 @@ try {
       primaryTo: legacy, title: `保存済み ${id} の見出し\n二行目`, description: `本文中の ${legacy} は保持`,
     });
     source.sections[0].style = { accent: '#AaBbCc', background: '#123456', button: '#654321', spacing: 'roomy' };
+    if (id === 'home') source.sections.find(section => section.kind === 'about').content.primaryTo = legacy;
     const contact = source.sections.find(section => section.kind === 'support-contact');
     if (contact) contact.content.discordTo = legacy;
     const raw = JSON.stringify(source);

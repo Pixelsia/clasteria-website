@@ -34,25 +34,6 @@ withDefaults(defineProps<{ content?: Record<string, string>; aboutId?: string; i
         <p class="max-w-3xl whitespace-pre-line text-lg leading-9 text-neutral-100">
           {{ content.description }}
         </p>
-        <div class="flex flex-wrap justify-center gap-3">
-          <UButton
-            :to="content.primaryTo"
-            color="primary"
-            trailing-icon="i-heroicons-arrow-right"
-            size="xl"
-          >
-            {{ content.primaryLabel }}
-          </UButton>
-          <UButton
-            :to="content.secondaryTo"
-            color="neutral"
-            variant="outline"
-            size="xl"
-            class="site-glass-action"
-          >
-            {{ content.secondaryLabel }}
-          </UButton>
-        </div>
         <div class="hero-connection w-full max-w-md rounded-xl border border-white/25 bg-neutral-950/45 px-5 py-4">
           <p class="text-xs font-bold tracking-wide text-neutral-200">
             仮サーバーアドレス

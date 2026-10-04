@@ -26,6 +26,6 @@ describe('initial-release content', () => {
 
   it('uses the verified existing contact destinations', () => {
     expect(supportEmail).toBe('support@pixelsia.net');
-    expect(supportDiscord).toBe('https://discord.gg/TwTPa4Yp4h');
+    expect(supportDiscord).toBe('https://discord.gg/fsts95chH5');
   });
 });

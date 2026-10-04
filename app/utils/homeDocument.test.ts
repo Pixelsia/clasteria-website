@@ -256,7 +256,7 @@ describe('home document content validation', () => {
 
   it.each([
     '/', '/articles', '/support', 'https://codingcraft.pixelsia.net/login',
-    'https://discord.gg/TwTPa4Yp4h', 'mailto:support@pixelsia.net',
+    'https://discord.gg/fsts95chH5', 'mailto:support@pixelsia.net',
   ])('accepts approved public link %s', (link) => {
     expect(isSafeHomeLink(link)).toBe(true);
     expect(() => validateHomeDocument(withHeroContent({ primaryTo: link, secondaryTo: link }))).not.toThrow();

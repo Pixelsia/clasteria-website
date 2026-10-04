@@ -116,7 +116,7 @@ describe('bounded page document registry and defaults', () => {
       expect(support).toContain(faq.content);
     }
     expect(support).toContain('support@pixelsia.net');
-    expect(support).toContain('https://discord.gg/TwTPa4Yp4h');
+    expect(support).toContain('https://discord.gg/fsts95chH5');
     const codingcraft = createDefaultPageDocument('codingcraft');
     expect(codingcraft.sections.filter(section => ['page-hero', 'cta'].includes(section.kind))
       .every(section => section.content.primaryTo === 'https://codingcraft.pixelsia.net/login')).toBe(true);

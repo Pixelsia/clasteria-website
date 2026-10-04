@@ -174,7 +174,7 @@ describe('shared page section rendering', () => {
   it('keeps public contact links at their fixed approved destinations', async () => {
     const html = await renderSection(createPageSection('support-contact', 'contact'));
     expect(html).toContain('mailto:support@pixelsia.net');
-    expect(html).toContain('https://discord.gg/TwTPa4Yp4h');
+    expect(html).toContain('https://discord.gg/fsts95chH5');
     expect(html).toContain('メールを作成');
     expect(html).toContain('rel="noopener noreferrer"');
   });

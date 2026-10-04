@@ -52,7 +52,7 @@ export const externalNavItems: SiteNavItem[] = [
 export const siteNavItems = [...primaryNavItems, ...externalNavItems];
 
 export const supportEmail = 'support@pixelsia.net';
-export const supportDiscord = 'https://discord.gg/TwTPa4Yp4h';
+export const supportDiscord = 'https://discord.gg/fsts95chH5';
 
 export const relatedServices = [
   { label: 'CodingCraft', to: 'https://codingcraft.pixelsia.net/login' },

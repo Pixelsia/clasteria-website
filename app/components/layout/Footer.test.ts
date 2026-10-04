@@ -44,10 +44,12 @@ async function renderFooter() {
 }
 
 describe('footer branding', () => {
-  it('renders both Pixelsia logos in their original colors at the existing responsive sizes', async () => {
+  it('renders one full-color brand group and preserves copyright in the upper footer', async () => {
     const document = await renderFooter();
     const logos = document.querySelectorAll('footer img[alt="Pixelsia"]');
-    expect(logos).toHaveLength(2);
+    expect(logos).toHaveLength(1);
+    expect(document.querySelectorAll('footer')).toHaveLength(1);
+    expect(document.querySelector('footer')!.textContent).toContain('© 2026 Pixelsia');
     for (const logo of logos) {
       expect(logo.getAttribute('src')).toBe('/images/pixelsia_header_logo.png');
       expect(logo.className.split(' ')).toEqual(['h-6', 'w-auto', 'object-contain', 'md:h-7']);

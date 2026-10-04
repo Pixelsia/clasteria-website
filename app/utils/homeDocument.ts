@@ -97,7 +97,7 @@ function exactKeys(value: Record<string, unknown>, keys: string[], label: string
 
 export function isSafeHomeLink(value: string): boolean {
   // A small public-destination allowlist also prevents restoring unpublished routes.
-  return ['/', '/articles', '/support', '/access', 'https://codingcraft.pixelsia.net/login', 'https://discord.gg/TwTPa4Yp4h', 'mailto:support@pixelsia.net'].includes(value);
+  return ['/', '/articles', '/support', '/access', 'https://codingcraft.pixelsia.net/login', 'https://discord.gg/fsts95chH5', 'mailto:support@pixelsia.net'].includes(value);
 }
 
 /** Optional button color preserves existing v1 files and server drafts byte semantics. */

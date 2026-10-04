@@ -63,7 +63,7 @@ try {
 
   await page.goto(`${baseURL}/support`);
   assert.ok(await page.locator('a[href="mailto:support@pixelsia.net"]').count());
-  assert.equal(await page.locator('a[href="https://discord.gg/TwTPa4Yp4h"]').count(), 1);
+  assert.equal(await page.locator('a[href="https://discord.gg/fsts95chH5"]').count(), 1);
   await page.getByRole('button', { name: 'アドレスをコピー' }).click();
   assert.match(await page.locator('[role="status"]').innerText(), /コピーしました|コピーできませんでした/);
   await page.getByRole('button', { name: 'ゲームへの参加方法を知りたいです' }).click();

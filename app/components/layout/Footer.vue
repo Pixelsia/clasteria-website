@@ -33,8 +33,7 @@ const columns: FooterColumn[] = [
     class="border-t border-neutral-200 bg-neutral-950 text-white"
     :ui="{
       top: 'py-12!',
-      bottom: 'pt-0! pb-8!',
-      container: 'p-0!',
+      container: 'hidden!',
     }"
   >
     <template #top>
@@ -67,29 +66,12 @@ const columns: FooterColumn[] = [
               <p class="mt-4 max-w-xs text-sm leading-7 text-neutral-300">
                 Minecraft の世界から、新しい体験を。Clasteria のお知らせとお問い合わせ情報をお届けします。
               </p>
+              <p class="mt-4 text-sm text-neutral-400">
+                &copy; 2026 Pixelsia
+              </p>
             </div>
           </template>
         </UFooterColumns>
-      </UContainer>
-    </template>
-
-    <template #bottom>
-      <UContainer class="flex flex-col gap-6 border-t border-neutral-800 pt-8 md:flex-row md:items-end md:justify-between">
-        <div class="inline-flex items-center gap-3">
-          <NuxtImg
-            src="/images/pixelsia_header_logo.png"
-            alt="Pixelsia"
-            class="h-6 w-auto object-contain md:h-7"
-          />
-          <span
-            class="h-6 w-px bg-neutral-700"
-            aria-hidden="true"
-          />
-          <span class="text-sm font-bold tracking-wide text-neutral-400 md:text-base">Clasteria</span>
-        </div>
-        <p class="text-sm text-neutral-400">
-          &copy; 2026 Pixelsia
-        </p>
       </UContainer>
     </template>
   </UFooter>

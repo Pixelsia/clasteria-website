@@ -1,5 +1,4 @@
 <script setup lang="ts">
-const { public: { visualEditorEnabled } } = useRuntimeConfig();
 const document = createDefaultHomeDocument();
 
 useSeoMeta({
@@ -11,13 +10,5 @@ useSeoMeta({
 <template>
   <div>
     <TopHomeDocument :document="document" />
-    <UButton
-      v-if="visualEditorEnabled"
-      to="/editor"
-      class="fixed right-4 bottom-4 z-40"
-      icon="i-heroicons-pencil-square"
-    >
-      Home を編集
-    </UButton>
   </div>
 </template>

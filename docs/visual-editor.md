@@ -4,7 +4,7 @@
 
 ## 開く
 
-- ブランチプレビューで Home 右下の「Home を編集」を選ぶか、`/editor` を開きます。既存の Cloudflare Access の認証が適用されます。
+- ブランチプレビューの編集画面は、URL `/editor` を直接開いて利用します。通常画面には編集リンクを表示しません。URL を隠すことは認証の代わりにはならず、既存の Cloudflare Access と本人限定のサーバー保存権限を維持します。
 - `pnpm dev` でも利用できます。静的生成をローカルで試す場合は `NUXT_VISUAL_EDITOR=true pnpm generate` を実行します。
 - Cloudflare Pages の `main` ブランチではエディターを生成しません。通常の本番ビルドでも明示的に有効化しない限り生成しません。エディターの URL は検索対象から除外します。
 

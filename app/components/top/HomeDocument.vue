@@ -6,7 +6,7 @@ const aboutId = computed(() => props.document.sections.find(section => section.k
 </script>
 
 <template>
-  <article class="-mt-20">
+  <article>
     <TopHomeSection
       v-for="section in document.sections"
       :key="section.id"

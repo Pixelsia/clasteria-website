@@ -1,3 +1,4 @@
+import { draftObject, requireDraftKeys, draftText } from './draftValidation';
 import homePage from './homePage.json' with { type: 'json' };
 import { normalizeDiscordDestination, supportDiscord } from './siteContent';
 
@@ -22,7 +23,7 @@ export const homeSectionLabels: Record<HomeSectionKind, string> = {
   hero: 'メインビジュアル', about: 'Clasteria の紹介', news: 'ニュース', contact: 'お問い合わせ',
 };
 
-// Approved public content only. Prototype game/account sections are intentionally absent.
+// 公開を承認された文章だけを初期値にし、試作段階のゲーム・アカウント項目を含めない。
 export const homeSectionTemplates: Record<HomeSectionKind, Omit<HomeSection, 'id'>> = {
   hero: {
     kind: 'hero',
@@ -87,24 +88,15 @@ function fail(message: string): never {
   throw new Error(message);
 }
 
-function object(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(`${label} の形式が正しくありません。`);
-  return value as Record<string, unknown>;
-}
-
-function exactKeys(value: Record<string, unknown>, keys: string[], label: string) {
-  if (Object.keys(value).length !== keys.length || Object.keys(value).some(key => !keys.includes(key))) fail(`${label} に未対応の項目があります。`);
-}
-
 export function isSafeHomeLink(value: string): boolean {
-  // A small public-destination allowlist also prevents restoring unpublished routes.
+  // 許可した移動先だけを復元し、未公開ルートへのリンクも防ぐ。
   return ['/', '/articles', '/support', '/access', 'https://codingcraft.pixelsia.net/login', supportDiscord, 'mailto:support@pixelsia.net'].includes(value);
 }
 
-/** Optional button color preserves existing v1 files and server drafts byte semantics. */
+/** ボタン色は省略可能にし、既存 v1 ファイルとサーバー下書きの内容を維持する。 */
 export function validateSectionStyle(input: unknown): HomeSectionStyle {
-  const style = object(input, 'スタイル');
-  exactKeys(style, ['accent', 'background', 'spacing', ...(Object.hasOwn(style, 'button') ? ['button'] : [])], 'スタイル');
+  const style = draftObject(input, 'スタイル');
+  requireDraftKeys(style, ['accent', 'background', 'spacing', ...(Object.hasOwn(style, 'button') ? ['button'] : [])], 'スタイル');
   for (const key of ['accent', 'background', ...(Object.hasOwn(style, 'button') ? ['button'] : [])]) {
     if (typeof style[key] !== 'string' || !/^#[\da-f]{6}$/i.test(style[key] as string)) fail('色は 6 桁の HEX 形式にしてください。');
   }
@@ -113,27 +105,35 @@ export function validateSectionStyle(input: unknown): HomeSectionStyle {
     ...(Object.hasOwn(style, 'button') ? { button: style.button as string } : {}) };
 }
 
+function restoreHomeHeroFields(content: Record<string, unknown>): Record<string, unknown> {
+  // 旧 v1 に不足する案内項目だけを追加し、保存済みの文章と項目順は維持する。
+  const restored = { ...content };
+  for (const key of ['serverAddress', 'serverNote', 'accessLabel', 'accessTo']) {
+    if (!Object.hasOwn(content, key)) restored[key] = homeSectionTemplates.hero.content[key];
+  }
+  return restored;
+}
+
 export function validateHomeDocument(input: unknown): HomeDocument {
-  const value = object(input, '下書き');
-  exactKeys(value, ['version', 'page', 'sections'], '下書き');
+  const value = draftObject(input, '下書き');
+  requireDraftKeys(value, ['version', 'page', 'sections'], '下書き');
   if (value.version !== 1 || value.page !== 'home') fail('この下書きのバージョンまたはページには対応していません。');
   if (!Array.isArray(value.sections) || !value.sections.length || value.sections.length > maxHomeSections) fail(`セクション数は 1〜${maxHomeSections} 個にしてください。`);
   const ids = new Set<string>();
   const sections = value.sections.map((input, index): HomeSection => {
-    const section = object(input, `セクション ${index + 1}`);
-    exactKeys(section, ['id', 'kind', 'content', 'style'], 'セクション');
+    const section = draftObject(input, `セクション ${index + 1}`);
+    requireDraftKeys(section, ['id', 'kind', 'content', 'style'], 'セクション');
     if (typeof section.id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(section.id) || ids.has(section.id)) fail('セクション ID が無効または重複しています。');
     ids.add(section.id);
     if (typeof section.kind !== 'string' || !Object.hasOwn(homeSectionTemplates, section.kind)) fail('未対応のセクションです。');
     const kind = section.kind as HomeSectionKind;
-    const sourceContent = object(section.content, '文章');
-    // Add the new invitation fields to legacy Home drafts without replacing any saved text.
-    const content = kind === 'hero' ? { ...sourceContent, ...Object.fromEntries(['serverAddress', 'serverNote', 'accessLabel', 'accessTo'].filter(key => !Object.hasOwn(sourceContent, key)).map(key => [key, homeSectionTemplates.hero.content[key]])) } : sourceContent;
-    exactKeys(content, Object.keys(homeSectionTemplates[kind].content), '文章');
+    const sourceContent = draftObject(section.content, '文章');
+    const content = kind === 'hero' ? restoreHomeHeroFields(sourceContent) : sourceContent;
+    requireDraftKeys(content, Object.keys(homeSectionTemplates[kind].content), '文章');
     const cleanContent: Record<string, string> = {};
     for (const [key, storedField] of Object.entries(content)) {
-      if (typeof storedField !== 'string' || storedField.length > 2000 || Array.from(storedField).some(character => character.charCodeAt(0) < 32 && !['\t', '\n', '\r'].includes(character))) fail(`${homeFieldLabels[key] ?? key} が無効です。`);
-      const field = key.endsWith('To') ? normalizeDiscordDestination(storedField) : storedField;
+      const text = draftText(storedField, homeFieldLabels[key] ?? key);
+      const field = key.endsWith('To') ? normalizeDiscordDestination(text) : text;
       if (key.endsWith('To') && !isSafeHomeLink(field)) fail('リンクは公開済みの移動先を選んでください。');
       if (key === 'image' && !homeImages.some(image => image.value === field)) fail('画像は登録済みの素材を選んでください。');
       cleanContent[key] = field;

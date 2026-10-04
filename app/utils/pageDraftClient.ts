@@ -2,7 +2,7 @@ import { parsePageDocument, serializePageDocument, validatePageDocument } from '
 import type { PageDocument } from './pageDocument';
 
 export function pageStorageKeys(page: PageDocument['page']) {
-  // The Home keys are an existing data contract; keep every previous local draft.
+  // Home の保存キーは既存データとの契約なので変更せず、端末の下書きを引き継ぐ。
   return { draft: `clasteria:${page}-draft:v1`, preview: `clasteria:${page}-preview:v1`,
     sync: `clasteria:${page}-draft-server:v1`, recovery: `clasteria:${page}-draft-recovery:v1` };
 }
@@ -92,7 +92,7 @@ export function acknowledgePageDraftSave(
     || draft.document.page !== submitted.document.page
     || draft.revision !== submitted.baseRevision + 1
     || serializePageDocument(draft.document) !== serializePageDocument(submitted.document)) return invalidResponse();
-  // A late save response advances the baseline, never the current editor contents.
+  // 遅れて届いた保存応答は比較基準だけを進め、現在の編集内容を置き換えない。
   return { ...state, base: draft };
 }
 

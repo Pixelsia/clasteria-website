@@ -12,7 +12,7 @@ export function accessConfiguration(env: AccessConfig) {
   const issuer = env.CLASTERIA_ACCESS_ISSUER ?? '';
   const audience = env.CLASTERIA_ACCESS_AUD ?? '';
   const emails = (env.CLASTERIA_EDITOR_ALLOWED_EMAILS ?? '').split(',').map(email => email.trim().toLowerCase()).filter(Boolean);
-  // The certs URL is operator-controlled, never derived from an unverified token.
+  // 証明書 URL は運用設定から決め、未検証のトークンに指定させない。
   if (!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(issuer) || !audience || !emails.length) return null;
   if (emails.some(email => !/^[^\s@,]+@[^\s@,]+$/.test(email))) return null;
   return { issuer, audience, emails };
@@ -35,7 +35,7 @@ export async function verifyEditorIdentity(
     });
     if (payload.type !== 'app' || typeof payload.sub !== 'string' || !payload.sub
       || typeof payload.email !== 'string' || !config.emails.includes(payload.email.toLowerCase())) return null;
-    // Store a stable opaque identity, not an email or a session token.
+    // 保存キーには安定した不透明な識別子を使い、メールアドレスやセッショントークンを残さない。
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${config.issuer}\n${payload.sub}`));
     return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
   }

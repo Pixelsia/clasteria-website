@@ -102,7 +102,7 @@ try {
   await canvasOrder(publishedIds);
   await eventually(async () => assert.equal(await canvas.locator('.home-section').count(), published.sections.length));
   assert.ok(await canvas.locator('.home-section-hero picture img').isVisible(), 'real hero image renders in the iframe');
-  assert.ok(await canvas.getByRole('link', { name: publishedHero.content.primaryLabel, exact: true }).isVisible());
+  assert.equal(await canvas.locator('[data-editor-section="hero"] [data-editor-field="primaryLabel"], [data-editor-section="hero"] [data-editor-field="secondaryLabel"]').count(), 0, 'hero action links stay hidden');
   assert.equal(await titleField.inputValue(), publishedHero.content.title);
   assert.ok(await page.getByRole('button', { name: label('複製') }).isDisabled(), 'hero cannot be duplicated');
   assert.ok(await page.getByRole('button', { name: label('削除') }).isDisabled(), 'hero cannot be deleted');
@@ -121,13 +121,16 @@ try {
   await inlineTitle.press('Escape');
   await eventually(async () => assert.match(await titleField.inputValue(), /画面から直接編集/));
 
-  const inlineButton = canvas.locator('[data-editor-section="hero"] [data-editor-field="primaryLabel"]');
+  // ボタンの直接編集は、表示中の紹介セクションで確認する。
+  await sectionList.getByRole('button', { name: /Clasteria の紹介/ }).click();
+  const inlineButton = canvas.locator('[data-editor-section="about"] [data-editor-field="primaryLabel"]');
   await inlineButton.dblclick();
   await inlineButton.fill('編集したボタン');
   await inlineButton.press('Enter');
   await eventually(async () => assert.equal(await page.getByLabel('ボタンの文字', { exact: true }).inputValue(), '編集したボタン'));
   assert.equal(new URL(page.url()).pathname, '/editor', 'editing a link label keeps the editor open');
 
+  await sectionList.getByRole('button', { name: /メインビジュアル/ }).click();
   await titleField.fill(editedTitle);
   await titleField.press('Tab');
   await canvas.getByText(editedTitle, { exact: true }).waitFor();

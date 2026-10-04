@@ -1,3 +1,4 @@
+import { draftObject, requireDraftKeys, draftText } from './draftValidation';
 import {
   createDefaultHomeDocument,
   createHomeSection,
@@ -161,7 +162,7 @@ export const pageFieldLabels: Record<string, string> = {
   }).flat()),
 };
 
-/** Only prose fields support explicit line breaks; destinations and UI labels stay single-line. */
+/** 文章だけに明示的な改行を許可し、移動先と UI ラベルは一行で扱う。 */
 export function isMultilinePageField(kind: PageSectionKind, key: string): boolean {
   return ['eyebrow', 'title', 'description', 'body', 'note', 'placeholder'].includes(key)
     || /(?:Title|Description|Body|Note)$/.test(key)
@@ -299,43 +300,36 @@ export function createDefaultPageDocument(page: PageId): PageDocument {
 function fail(message: string): never {
   throw new Error(message);
 }
-function object(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(`${label} の形式が正しくありません。`);
-  return value as Record<string, unknown>;
-}
-function exactKeys(value: Record<string, unknown>, keys: string[], label: string) {
-  if (Object.keys(value).length !== keys.length || Object.keys(value).some(key => !keys.includes(key))) fail(`${label} に未対応の項目があります。`);
-}
 
-/** Validates drafts only; it does not change public route or publication policy. */
+/** 下書きの検証に限定し、公開ルートや公開状態は変更しない。 */
 export function validatePageDocument(input: unknown, expectedPage?: PageId): PageDocument {
-  const value = object(input, '下書き');
-  exactKeys(value, ['version', 'page', 'sections'], '下書き');
+  const value = draftObject(input, '下書き');
+  requireDraftKeys(value, ['version', 'page', 'sections'], '下書き');
   if (value.version !== 1 || !isPageId(value.page)) fail('この下書きのバージョンまたはページには対応していません。');
   const page = value.page;
   if (expectedPage !== undefined && page !== expectedPage) fail('選択中のページと下書きのページが一致しません。');
-  // Keep legacy Home schema, field limits, links, images and hero rules unchanged.
+  // Home は既存のスキーマ・項目制限・リンク・画像・メインビジュアルの規則で検証する。
   if (page === 'home') return validateHomeDocument(input);
   if (!Array.isArray(value.sections) || value.sections.length < 1 || value.sections.length > maxPageSections) fail(`セクション数は 1〜${maxPageSections} 個にしてください。`);
   const ids = new Set<string>();
   const destinations = new Set(pageDestinations(page).map(destination => destination.value));
   const sections = value.sections.map((input, index): PageSection => {
-    const value = object(input, `セクション ${index + 1}`);
-    exactKeys(value, ['id', 'kind', 'content', 'style'], 'セクション');
+    const value = draftObject(input, `セクション ${index + 1}`);
+    requireDraftKeys(value, ['id', 'kind', 'content', 'style'], 'セクション');
     if (typeof value.id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(value.id) || ids.has(value.id)) fail('セクション ID が無効または重複しています。');
     ids.add(value.id);
     if (typeof value.kind !== 'string' || !allowedKinds[page].includes(value.kind as PageSectionKind)) fail('このページでは使用できないセクションです。');
     const kind = value.kind as PageSectionKind;
-    const content = object(value.content, '文章');
-    exactKeys(content, Object.keys(pageSectionTemplates[kind].content), '文章');
+    const content = draftObject(value.content, '文章');
+    requireDraftKeys(content, Object.keys(pageSectionTemplates[kind].content), '文章');
     const cleanContent: Record<string, string> = {};
     for (const [key, storedField] of Object.entries(content)) {
-      if (typeof storedField !== 'string' || storedField.length > 2000 || Array.from(storedField).some(character => character.charCodeAt(0) < 32 && !['\t', '\n', '\r'].includes(character))) fail(`${pageFieldLabels[key] ?? key} が無効です。`);
-      const field = key.endsWith('To') ? normalizeDiscordDestination(storedField) : storedField;
+      const text = draftText(storedField, pageFieldLabels[key] ?? key);
+      const field = key.endsWith('To') ? normalizeDiscordDestination(text) : text;
       if (key.endsWith('To') && !destinations.has(field)) fail('リンクはこのページで使用できる移動先を選んでください。');
       if (key === 'image' && (!pageImages.some(image => image.value === field) || (kind === 'page-hero' && field === ''))) fail('画像は登録済みの素材を選んでください。');
       if (key.endsWith('Icon') && !pageIcons.some(icon => icon === field)) fail('アイコンは登録済みのものを選んでください。');
-      // Contact destinations and their displayed address must stay in agreement.
+      // お問い合わせの移動先と表示アドレスの一致を確認する。
       if (kind === 'support-contact' && ((key === 'emailLabel' && field !== supportEmail) || (key === 'emailTo' && field !== `mailto:${supportEmail}`) || (key === 'discordTo' && field !== supportDiscord))) fail('お問い合わせ先は承認済みの窓口を使用してください。');
       if (kind === 'article-meta') {
         if (key === 'brand' && field !== 'clasteria') fail('記事のブランドは clasteria にしてください。');
@@ -375,7 +369,7 @@ export function isSafePageLink(page: PageId, value: string): boolean {
   return page === 'home' ? isSafeHomeLink(value) : pageDestinations(page).some(destination => destination.value === value);
 }
 
-/** Exports a new draft source file; publication still requires a separate reviewed workflow. */
+/** 記事の元ファイルを書き出す。公開は別途、内容を確認してから行う。 */
 export function serializeArticleMarkdown(document: PageDocument): string {
   const clean = validatePageDocument(document, 'article-draft');
   const metadata = clean.sections.find(section => section.kind === 'article-meta')!.content;

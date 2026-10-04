@@ -8,6 +8,7 @@ import * as documents from '../../utils/homeDocument';
 import * as drafts from '../../utils/homeDraftClient';
 import * as pageDocuments from '../../utils/pageDocument';
 import * as pageDrafts from '../../utils/pageDraftClient';
+import * as pageDraftRequest from '../../composables/pageDraftRequest';
 import type { PageDocument as HomeDocument, PageSection as HomeSection, PageId } from '../../utils/pageDocument';
 import type { PageDraftClientState as HomeDraftClientState, PageDraftRequestError as HomeDraftRequestError, ServerPageDraft as ServerHomeDraft } from '../../utils/pageDraftClient';
 
@@ -196,6 +197,7 @@ async function mountEditor(
     '~/utils/homeDocument': documents,
     '~/utils/pageDocument': pageDocuments,
     '~/utils/pageDraftClient': pageDrafts,
+    '~/composables/pageDraftRequest': pageDraftRequest,
     '~/utils/homeDraftClient': drafts,
     '~/utils/editorInlineText': { markInlineText: () => {}, inlineTextValue: () => '' },
     '~/utils/editorCanvas': { configureHomeEditorCanvas: () => {} },

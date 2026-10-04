@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { render } from 'vue';
+import { usePageDraftRequest } from '~/composables/pageDraftRequest';
 import { createEditorSectionVNode } from '~/composables/editorSection';
 import type { Component, Editor } from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
@@ -16,14 +17,15 @@ import { homeImages, defaultButtonColor } from '~/utils/homeDocument';
 import type { PageDocument, PageSection, PageSectionKind, PageId } from '~/utils/pageDocument';
 import {
   acknowledgePageDraftSave, canApplyServerPageDraft, createPageDraftClientState, pageStorageKeys,
-  pageDraftRequestTimeoutMs, pageDraftResponseError, PageDraftRequestError, isPageDraftServerDirty,
-  parseServerPageDraftResponse, recordPageDraftEdit, restorePageDraftSyncState, serializePageDraftSyncState,
+  PageDraftRequestError, isPageDraftServerDirty,
+  recordPageDraftEdit, restorePageDraftSyncState, serializePageDraftSyncState,
 } from '~/utils/pageDraftClient';
 import type { ServerPageDraft } from '~/utils/pageDraftClient';
 
 const props = withDefaults(defineProps<{ page?: PageId }>(), { page: 'home' });
-// The parent keys this component by page. Each page owns requests, history and storage.
+// 親のページキーごとに通信・履歴・保存状態を分離する。
 const pageId = props.page;
+const { requestServerDraft, abortServerDraft } = usePageDraftRequest(pageId);
 const pageDefinition = pageDefinitions.find(page => page.id === pageId)!;
 const storageKeys = pageStorageKeys(pageId);
 const availableKinds = allowedPageSectionKinds(pageId).filter(kind => !isRequiredPageSection(kind));
@@ -73,7 +75,6 @@ const saveRequiresLoad = computed(() => {
   return serverConflict.value || (!!available && (!base || available.revision !== base.revision
     || serializePageDocument(available.document) !== serializePageDocument(base.document)));
 });
-let serverRequest: AbortController | undefined;
 let editor: Editor | undefined;
 let syncing = false;
 const inlineObservers = new WeakMap<HTMLElement, MutationObserver>();
@@ -101,7 +102,7 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let canvasTimer: ReturnType<typeof setTimeout> | undefined;
 const destinations = pageDestinations(pageId);
 const iconOptions = pageIcons.map(icon => ({ label: icon.replace('i-heroicons-', ''), value: icon }));
-// Keep v1 action fields in saved JSON, but no longer offer controls for removed Home hero buttons.
+// 非表示にした Home ボタンの v1 項目は JSON に維持し、編集欄には表示しない。
 const editableContent = computed(() => Object.fromEntries(Object.entries(selected.value?.content ?? {})
   .filter(([key]) => selected.value?.kind !== 'hero' || !['primaryLabel', 'primaryTo', 'secondaryLabel', 'secondaryTo'].includes(key))));
 const imageOptions = computed(() => pageId === 'home' ? homeImages : pageImages.filter(image => image.value || selected.value?.kind === 'split-content'));
@@ -188,7 +189,7 @@ function saveDraft() {
       if (recovered !== null && recovered !== original) {
         throw new Error('別の元バックアップが保管されているため、自動保存を停止しました。元のバックアップと現在の下書きを書き出して保管してください。');
       }
-      // Preserve the exact unreadable text before replacing the active backup.
+      // 読み取れない元データをそのまま保管してから、編集中のバックアップを置き換える。
       localStorage.setItem(storageKeys.recovery, original);
       originalBackup.value = original;
     }
@@ -273,7 +274,7 @@ function moveSection(offset: number) {
   const wrapper = editor?.getWrapper();
   if (!model || !wrapper) return;
   const next = model.index() + offset;
-  // GrapesJS uses the pre-removal insertion boundary when moving down.
+  // 下へ移動するときの挿入位置は、GrapesJS が削除前の配列を基準に扱う。
   if (next >= 0 && next < sectionList.value.length) model.move(wrapper, { at: offset > 0 ? next + 1 : next });
 }
 function addSection(kind: PageSectionKind) {
@@ -374,36 +375,6 @@ function resetDraft() {
   resetOpen.value = false;
 }
 
-async function requestServerDraft(method: 'GET' | 'PUT', body?: { document: PageDocument; baseRevision: number }) {
-  const controller = new AbortController();
-  serverRequest = controller;
-  const timer = setTimeout(() => controller.abort(), pageDraftRequestTimeoutMs);
-  try {
-    const response = await fetch(`/api/editor/${pageId}`, {
-      method, credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal,
-      headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    if (!response.ok) throw pageDraftResponseError(response.status);
-    let result: unknown;
-    try {
-      result = await response.json();
-    }
-    catch { throw new PageDraftRequestError('invalid_response', 'サーバーの応答を確認できませんでした。ログインと保存先の設定を確認してください。'); }
-    return parseServerPageDraftResponse(result, pageId);
-  }
-  catch (cause) {
-    if (cause instanceof PageDraftRequestError) throw cause;
-    if (controller.signal.aborted) {
-      throw new PageDraftRequestError('timeout', '通信がタイムアウトしました。保存結果は未確認です。下書きを書き出して保管し、接続を再確認してください。');
-    }
-    throw new PageDraftRequestError('network', '通信できませんでした。ネットワークとログイン状態を確認し、もう一度お試しください。現在の編集内容は残っています。');
-  }
-  finally {
-    clearTimeout(timer);
-    if (serverRequest === controller) serverRequest = undefined;
-  }
-}
 function reportServerError(cause: unknown) {
   serverError.value = cause instanceof PageDraftRequestError
     ? cause
@@ -419,7 +390,7 @@ async function checkServerDraft(allowAutoLoad = false, requestLoad = false) {
     const draft = await requestServerDraft('GET');
     if (disposed) return;
     availableServerDraft.value = draft;
-    // A successful refresh supersedes any older load confirmation.
+    // 更新を確認できたら、古い読み込み確認を取り消す。
     pendingServerLoad.value = undefined;
     if (!draft) {
       const hadBaseline = !!draftState.value.base;
@@ -504,7 +475,7 @@ onBeforeRouteUpdate((to) => {
   }
 });
 onBeforeRouteLeave(() => {
-  // Failed local storage must not silently discard edits on Preview/Back/navigation.
+  // ブラウザー保存に失敗したときは、プレビューや画面遷移で編集を失わないよう停止する。
   if (ready.value && (serverBusy.value || !saveDraft())) return false;
 });
 
@@ -605,7 +576,7 @@ onMounted(async () => {
       droppable: (source: Component) => source.is('clasteria-section'),
       selectable: false,
     });
-    // Do not expose the native HTML paste/import or arbitrary component registry.
+    // 任意の HTML 貼り付け・取り込み・コンポーネント登録を公開しない。
     editor.Keymaps.remove('core:copy');
     editor.Keymaps.remove('core:paste');
     for (const kind of availableKinds) {
@@ -659,11 +630,11 @@ onMounted(async () => {
       if (protectedLocalDraft.value === undefined) savedSync = localStorage.getItem(storageKeys.sync);
       originalBackup.value ??= localStorage.getItem(storageKeys.recovery) ?? undefined;
     }
-    catch { /* Optional recovery metadata must not prevent opening the editor. */ }
+    catch { /* 復旧用の補助情報を読めなくてもエディターは開けるようにする。 */ }
     applyDocument(initial);
     protectedLocalGeneration = draftState.value.generation;
     draftState.value = restorePageDraftSyncState(draftState.value, savedSync);
-    // Register the frame lifecycle handlers before an iframe can start loading.
+    // フレームが読み込みを始める前に、ライフサイクル処理を登録しておく。
     editor.render();
     ready.value = true;
     window.addEventListener('pagehide', saveDraft);
@@ -673,7 +644,7 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => {
   disposed = true;
-  serverRequest?.abort();
+  abortServerDraft();
   window.removeEventListener('pagehide', saveDraft);
   clearTimeout(saveTimer);
   clearTimeout(canvasTimer);

@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { accountNavItems, featureCards, primaryNavItems, siteNavItems, supportDiscord, supportEmail, relatedServices } from './siteContent';
+import { accountNavItems, featureCards, primaryNavItems, siteNavItems, supportDiscord, supportEmail, relatedServices, externalNavItems } from './siteContent';
 
 describe('initial-release content', () => {
   it('only exposes supported public destinations', () => {
     expect(siteNavItems.map(item => item.to)).toEqual([
-      '/', '/articles', '/access', '/support',
+      '/', '/articles', '/access', '/support', 'https://recruit.pixelsia.net/',
     ]);
-    expect(primaryNavItems).toEqual(siteNavItems);
+    expect(siteNavItems).toEqual([...primaryNavItems, ...externalNavItems]);
     expect(accountNavItems).toEqual([]);
+  });
+  it('identifies the official recruitment site as an external navigation destination', () => {
+    expect(externalNavItems).toEqual([{ label: '採用情報', to: 'https://recruit.pixelsia.net/', eyebrow: 'RECRUIT', external: true }]);
   });
 
   it('preserves game prototype data without publishing it in navigation', () => {

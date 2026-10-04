@@ -7,6 +7,16 @@ const columns: FooterColumn[] = [
     children: primaryNavItems,
   },
   {
+    label: 'Pixelsia',
+    children: siteNavItems.filter(item => item.external).map(item => ({
+      label: `${item.label}（外部サイト）`,
+      to: item.to,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      trailingIcon: 'i-heroicons-arrow-up-right',
+    })),
+  },
+  {
     label: '関連サービス',
     children: relatedServices.map(service => ({
       ...service,

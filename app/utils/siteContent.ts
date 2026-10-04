@@ -2,6 +2,7 @@ export type SiteNavItem = {
   label: string;
   to: string;
   eyebrow: string;
+  external?: boolean;
 };
 
 export type FeatureCard = {
@@ -37,7 +38,7 @@ export type TodoItem = {
 };
 
 // Initial release: only destinations with usable, public-facing content.
-export const primaryNavItems = [
+export const primaryNavItems: SiteNavItem[] = [
   { label: 'Home', to: '/', eyebrow: 'HOME' },
   { label: 'ニュース', to: '/articles', eyebrow: 'NEWS' },
   { label: '参加・アクセス', to: '/access', eyebrow: 'ACCESS' },
@@ -45,7 +46,10 @@ export const primaryNavItems = [
 ] satisfies SiteNavItem[];
 
 export const accountNavItems: SiteNavItem[] = [];
-export const siteNavItems = primaryNavItems;
+export const externalNavItems: SiteNavItem[] = [
+  { label: '採用情報', to: 'https://recruit.pixelsia.net/', eyebrow: 'RECRUIT', external: true },
+];
+export const siteNavItems = [...primaryNavItems, ...externalNavItems];
 
 export const supportEmail = 'support@pixelsia.net';
 export const supportDiscord = 'https://discord.gg/TwTPa4Yp4h';

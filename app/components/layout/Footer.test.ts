@@ -8,7 +8,7 @@ import * as vue from 'vue';
 import type { Component } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import { compileScript, parse } from 'vue/compiler-sfc';
-import { primaryNavItems, relatedServices } from '../../utils/siteContent';
+import { primaryNavItems, relatedServices, siteNavItems } from '../../utils/siteContent';
 
 const { JSDOM } = createRequire(import.meta.url)('jsdom') as {
   JSDOM: new (html: string) => { window: Window & typeof globalThis };
@@ -22,11 +22,11 @@ async function renderFooter() {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   const exports = {} as { default: Component };
-  const evaluate = new Function('require', 'exports', 'primaryNavItems', 'relatedServices', executable);
+  const evaluate = new Function('require', 'exports', 'primaryNavItems', 'relatedServices', 'siteNavItems', executable);
   evaluate((name: string) => {
     if (name === 'vue') return vue;
     throw new Error(`Unexpected component dependency: ${name}`);
-  }, exports, primaryNavItems, relatedServices);
+  }, exports, primaryNavItems, relatedServices, siteNavItems);
 
   const app = vue.createSSRApp(exports.default);
   app.component('UFooter', vue.defineComponent({

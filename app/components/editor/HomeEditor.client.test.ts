@@ -237,9 +237,10 @@ afterEach(() => {
 });
 
 describe('dismissible editor notice', () => {
-  it('starts visible and returns focus to the toolbar control after dismissal', async () => {
+  it('starts compact and returns focus to the toolbar control after dismissal', async () => {
     const editor = await mountEditor();
-    expect(editor.api.noticeVisible.value).toBe(true);
+    expect(editor.api.noticeVisible.value).toBe(false);
+    editor.api.noticeVisible.value = true;
     const dismissal = editor.api.dismissNotice();
     expect(editor.api.noticeVisible.value).toBe(false);
     expect(editor.noticeToggleFocus).not.toHaveBeenCalled();
@@ -293,7 +294,7 @@ describe('dismissible editor notice', () => {
     await editor.api.dismissNotice();
     editor.unmount();
     const reopened = await mountEditor(undefined, undefined, { storage: editor.storage });
-    expect(reopened.api.noticeVisible.value).toBe(true);
+    expect(reopened.api.noticeVisible.value).toBe(false);
     expect(reopened.api.documentFromEditor()).toEqual(draft().document);
     reopened.unmount();
   });

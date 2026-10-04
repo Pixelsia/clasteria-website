@@ -35,7 +35,7 @@ const blocks = useTemplateRef('blocks');
 const layers = useTemplateRef('layers');
 const fileInput = useTemplateRef('fileInput');
 const noticeToggle = useTemplateRef<HTMLButtonElement>('noticeToggle');
-const noticeVisible = ref(true);
+const noticeVisible = ref(false);
 const selected = shallowRef<PageSection>();
 const sectionList = ref<PageSection[]>([]);
 const ready = ref(false);
@@ -55,6 +55,8 @@ const serverStatus = ref('サーバーの下書きを確認します');
 const serverError = shallowRef<PageDraftRequestError>();
 const availableServerDraft = shallowRef<ServerPageDraft | null>(null);
 const pendingServerLoad = shallowRef<{ draft: ServerPageDraft; generation: number }>();
+const backupStatus = computed(() => serverError.value?.message
+  ?? (serverBusy.value === 'checking' ? 'サーバーの下書きを確認しています…' : serverStatus.value));
 const serverConflict = ref(false);
 const invalidDraft = ref(false);
 const protectedLocalDraft = ref<string>();
@@ -680,8 +682,8 @@ onBeforeUnmount(() => {
 <template>
   <div class="home-editor">
     <header class="editor-toolbar">
-      <div>
-        <p class="text-xs font-bold text-primary-700">
+      <div class="editor-identity">
+        <p class="editor-brand">
           CLASTERIA / DESIGN
         </p>
         <label
@@ -709,37 +711,14 @@ onBeforeUnmount(() => {
         >
           {{ pageDefinition.published ? '公開済みページの下書き' : '非公開ページ · 保存しても公開されません' }}
         </p>
-        <p class="mt-1 text-xs text-neutral-600">
+        <p class="sr-only">
           {{ pageDefinition.description }}
         </p>
         <h1 class="text-xl font-black">
           {{ pageDefinition.label }} を編集
         </h1>
-        <div class="mt-1 flex flex-wrap items-center gap-3 text-xs">
-          <span
-            role="status"
-            :aria-live="noticeVisible ? 'off' : 'polite'"
-            class="font-bold"
-          >
-            {{ serverBusy === 'saving' ? 'サーバーに保存中…' : serverDirty ? 'サーバー未保存' : 'サーバー保存済み' }}
-            <span
-              v-if="!noticeVisible"
-              class="sr-only"
-            >{{ serverStatus }}</span>
-          </span>
-          <button
-            ref="noticeToggle"
-            type="button"
-            aria-controls="editor-save-notice"
-            :aria-expanded="noticeVisible"
-            class="rounded px-1 py-1 text-neutral-600 underline hover:text-primary-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-700"
-            @click="noticeVisible ? dismissNotice() : showNotice()"
-          >
-            {{ noticeVisible ? '保存の案内を閉じる' : '保存の案内を表示' }}
-          </button>
-        </div>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="editor-actions">
         <UButton
           color="neutral"
           variant="outline"
@@ -765,38 +744,50 @@ onBeforeUnmount(() => {
           PCのファイルを読み込む
         </UButton>
         <UButton
+          class="editor-save-button"
           :disabled="!ready"
           @click="downloadDraft"
         >
           このPCに保存
         </UButton>
-        <UButton
-          v-if="pageId === 'article-draft'"
-          color="neutral"
-          variant="outline"
-          :disabled="!ready"
-          @click="downloadArticle"
-        >
-          記事を Markdown で書き出す
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="outline"
-          :disabled="!ready || !!serverBusy || !!pendingServerLoad"
-          :loading="serverBusy === 'loading'"
-          @click="checkServerDraft(false, true)"
-        >
-          サーバーの下書きを読み込む
-        </UButton>
-        <UButton
-          color="neutral"
-          variant="outline"
-          :disabled="!ready || !!serverBusy || !!pendingServerLoad || saveRequiresLoad || !serverDirty"
-          :loading="serverBusy === 'saving'"
-          @click="saveServerDraft"
-        >
-          サーバーにバックアップ
-        </UButton>
+        <details class="editor-secondary-actions">
+          <summary>その他の保存</summary>
+          <div class="editor-action-popover">
+            <p class="editor-panel-caption">
+              任意のバックアップ
+            </p>
+            <UButton
+              v-if="pageId === 'article-draft'"
+              color="neutral"
+              variant="outline"
+              :disabled="!ready"
+              @click="downloadArticle"
+            >
+              記事を Markdown で書き出す
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              :disabled="!ready || !!serverBusy || !!pendingServerLoad"
+              :loading="serverBusy === 'loading'"
+              @click="checkServerDraft(false, true)"
+            >
+              サーバーの下書きを読み込む
+            </UButton>
+            <UButton
+              color="neutral"
+              variant="outline"
+              :disabled="!ready || !!serverBusy || !!pendingServerLoad || saveRequiresLoad || !serverDirty"
+              :loading="serverBusy === 'saving'"
+              @click="saveServerDraft"
+            >
+              サーバーにバックアップ
+            </UButton>
+            <p class="text-xs text-neutral-500">
+              {{ backupStatus }}
+            </p>
+          </div>
+        </details>
         <UButton
           color="neutral"
           variant="outline"
@@ -814,12 +805,38 @@ onBeforeUnmount(() => {
         </UButton>
       </div>
       <div
-        class="w-full text-xs"
+        class="editor-savebar"
         role="status"
         aria-live="polite"
       >
-        {{ status }} · {{ fileDirty ? '現在の内容は PC のファイルに未書き出し' : '現在の内容のダウンロードを開始済み' }}
-        <span class="ml-2">{{ fileStatus }}</span>
+        <div class="editor-save-indicators">
+          <span
+            class="editor-status-chip"
+            :class="localSaveError ? 'editor-status-error' : ''"
+          >
+            <span
+              class="editor-status-dot"
+              aria-hidden="true"
+            />{{ status }}
+          </span>
+          <span
+            class="editor-file-state"
+            :title="fileStatus"
+          >
+            {{ fileDirty ? 'PC ファイルに未書き出し' : 'JSON のダウンロードを開始済み' }}
+          </span>
+          <span class="editor-draft-badge">{{ pageDefinition.published ? '公開済みページの下書き' : '非公開ページの下書き' }}</span>
+        </div>
+        <button
+          ref="noticeToggle"
+          type="button"
+          aria-controls="editor-save-notice"
+          :aria-expanded="noticeVisible"
+          class="editor-guide-toggle"
+          @click="noticeVisible ? dismissNotice() : showNotice()"
+        >
+          {{ noticeVisible ? '保存の案内を閉じる' : '保存の案内を表示' }}
+        </button>
       </div>
       <input
         ref="fileInput"
@@ -913,7 +930,7 @@ onBeforeUnmount(() => {
       </section>
     </div>
     <section
-      v-if="saveRequiresLoad || serverError || pendingServerLoad"
+      v-if="saveRequiresLoad || (serverError && serverError.code !== 'unavailable') || pendingServerLoad"
       class="border-b border-neutral-200 bg-white px-5 py-3 text-sm"
       aria-label="下書き保存の確認・エラー"
     >
@@ -1024,41 +1041,15 @@ onBeforeUnmount(() => {
         class="editor-sidebar"
         aria-label="セクションとレイヤー"
       >
-        <h2 class="font-black">
-          セクションを追加
-        </h2>
-        <p class="mt-2 text-xs leading-6 text-neutral-600">
-          下のブロックを画面にドラッグ。または追加ボタンを使ってください。
-        </p>
-        <div
-          ref="blocks"
-          class="editor-blocks"
-        />
-        <div class="my-3 flex flex-wrap gap-2">
-          <UButton
-            v-for="kind in availableKinds"
-            :key="kind"
-            color="neutral"
-            variant="outline"
-            size="xs"
-            :disabled="!ready || sectionList.length >= maxPageSections"
-            @click="addSection(kind)"
-          >
-            ＋ {{ pageSectionLabels[kind] }}
-          </UButton>
+        <div class="editor-panel-heading">
+          <p class="editor-panel-caption">
+            PAGE STRUCTURE
+          </p>
+          <h2>ページ構成</h2>
+          <p>{{ sectionList.length }} セクション</p>
         </div>
-        <h2 class="mt-6 font-black">
-          レイヤー
-        </h2>
-        <p class="mt-2 text-xs leading-6 text-neutral-600">
-          ドラッグで順序を変更できます。
-        </p>
-        <div
-          ref="layers"
-          class="editor-layers"
-        />
         <ol
-          class="mt-4 space-y-1"
+          class="editor-section-list"
           aria-label="セクション一覧"
         >
           <li
@@ -1066,14 +1057,46 @@ onBeforeUnmount(() => {
             :key="section.id"
           >
             <button
-              class="w-full rounded px-2 py-2 text-left text-sm hover:bg-primary-50"
-              :class="selected?.id === section.id ? 'bg-primary-50 font-bold text-primary-800' : ''"
+              class="editor-section-item"
+              :class="selected?.id === section.id ? 'is-selected' : ''"
+              :aria-pressed="selected?.id === section.id"
               @click="selectSection(section.id)"
             >
               {{ index + 1 }}. {{ pageSectionLabels[section.kind] }}
             </button>
           </li>
         </ol>
+        <details class="editor-panel-details">
+          <summary>ドラッグで並べ替え</summary>
+          <div
+            ref="layers"
+            class="editor-layers"
+          />
+        </details>
+        <div class="editor-add-section">
+          <h2>セクションを追加</h2>
+          <p>ページに新しい内容を追加します。</p>
+          <div class="editor-add-buttons">
+            <UButton
+              v-for="kind in availableKinds"
+              :key="kind"
+              color="neutral"
+              variant="outline"
+              size="xs"
+              :disabled="!ready || sectionList.length >= maxPageSections"
+              @click="addSection(kind)"
+            >
+              ＋ {{ pageSectionLabels[kind] }}
+            </UButton>
+          </div>
+          <details class="editor-panel-details">
+            <summary>ブロックをドラッグして追加</summary>
+            <div
+              ref="blocks"
+              class="editor-blocks"
+            />
+          </details>
+        </div>
         <details class="mt-6 text-xs leading-6">
           <summary class="cursor-pointer font-bold">
             使い方・公開までの流れ
@@ -1135,7 +1158,7 @@ onBeforeUnmount(() => {
         aria-label="編集キャンバス"
       >
         <div class="editor-devicebar">
-          <span class="text-xs font-bold">文章をダブルクリックで編集 · Esc で取消 · ⌘Enter で確定</span>
+          <span class="editor-canvas-hint">文章をダブルクリックで編集 <span>· Esc で取消 · ⌘Enter で確定</span></span>
           <div class="flex gap-1">
             <UButton
               color="neutral"
@@ -1168,9 +1191,16 @@ onBeforeUnmount(() => {
         />
       </main>
       <aside
-        class="editor-sidebar"
+        class="editor-sidebar editor-inspector"
         aria-label="選択したセクションの編集"
       >
+        <div class="editor-panel-heading">
+          <p class="editor-panel-caption">
+            PROPERTIES
+          </p>
+          <h2>プロパティ</h2>
+          <p>選択したセクションの設定</p>
+        </div>
         <template v-if="selected">
           <h2 class="font-black">
             {{ pageSectionLabels[selected.kind] }}
@@ -1317,141 +1347,522 @@ onBeforeUnmount(() => {
 
 <style>
 .home-editor {
-  min-height: 100vh;
-  background: #f4f9f4;
-  color: #101828;
-  }
+  --editor-ink: #25313c;
+  --editor-muted: #66737f;
+  --editor-line: #e4e8ec;
+  --editor-accent: #26715b;
+
+  display: flex;
+  height: 100dvh;
+  min-height: 640px;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f0f2f5;
+  color: var(--editor-ink);
+  font-size: 13px;
+}
+
+.home-editor button, .home-editor summary, .home-editor input, .home-editor select, .home-editor textarea {
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
 
 .editor-toolbar {
+  z-index: 5;
   display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
+  gap: 12px 24px;
+  border-bottom: 1px solid var(--editor-line);
+  background: #fff;
+  padding: 16px 22px 0;
+}
+
+.editor-identity {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 240px);
+  align-items: center;
+  gap: 2px 22px;
+}
+
+.editor-brand {
+  color: var(--editor-muted);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+.editor-identity h1 {
+  grid-row: 2;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.editor-identity > p:nth-of-type(2) {
+  display: none;
+}
+
+.editor-identity select {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  margin: 0;
+  background: #f8f9fa;
+}
+
+.editor-actions {
+  display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  border-bottom: 1px solid #d1d5db;
-  background: white;
-  padding: 1rem 1.25rem;
-  }
+  align-items: center;
+  gap: 6px;
+}
+
+.editor-actions > button, .editor-actions > a {
+  min-height: 34px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.editor-save-button {
+  background: var(--editor-accent);
+  color: #fff;
+}
+
+.editor-secondary-actions {
+  position: relative;
+}
+
+.editor-secondary-actions summary, .editor-guide-toggle {
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--editor-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.editor-secondary-actions :where(summary:hover), .editor-guide-toggle:hover {
+  background: #f1f4f6;
+}
+
+.editor-action-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  width: 300px;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--editor-line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 12px 36px #25313c1f;
+}
+
+.editor-savebar {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #f0f2f4;
+  color: var(--editor-muted);
+  font-size: 11px;
+}
+
+.editor-save-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.editor-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--editor-accent);
+}
+
+.editor-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.editor-status-error {
+  color: #b42318;
+}
+
+.editor-draft-badge {
+  border-radius: 5px;
+  background: #f1f4f6;
+  padding: 3px 7px;
+  font-size: 10px;
+}
 
 .editor-notice {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  border-bottom: 1px solid #d1d5db;
-  padding: 0.75rem 3.5rem 0.75rem 1.25rem;
-  font-size: 0.75rem;
-  line-height: 1.75;
-  }
+  gap: 24px;
+  border-bottom: 1px solid var(--editor-line);
+  background: #f9fafb;
+  padding: 14px 58px 14px 22px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+#editor-save-notice {
+  max-height: 28vh;
+  flex-shrink: 0;
+  overflow: auto;
+}
+
+.home-editor > [role="alertdialog"], .home-editor > [role="alert"] {
+  max-height: 30vh;
+  flex-shrink: 0;
+  overflow: auto;
+}
 
 .editor-workspace {
   display: grid;
-  grid-template-columns: 15rem minmax(0, 1fr) 18rem;
-  height: calc(100vh - 10rem);
-  min-height: 38rem;
-  }
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 224px minmax(0, 1fr) 288px;
+  gap: 16px;
+  padding: 16px;
+}
 
 .editor-sidebar {
+  min-height: 0;
   overflow: auto;
-  border-right: 1px solid #d1d5db;
-  border-left: 1px solid #d1d5db;
-  background: white;
-  padding: 1rem;
-  }
+  border: 1px solid var(--editor-line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 16px;
+}
+
+.editor-panel-heading {
+  margin-bottom: 18px;
+}
+
+.editor-panel-caption {
+  margin-bottom: 6px;
+  color: #85909b;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+}
+
+.editor-panel-heading h2 {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+:where(.editor-panel-heading > p:last-child, .editor-add-section > p) {
+  margin-top: 5px;
+  color: var(--editor-muted);
+  font-size: 11px;
+}
+
+.editor-section-list {
+  display: grid;
+  gap: 5px;
+}
+
+.editor-section-item {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: left;
+  color: #53616d;
+  font-size: 12px;
+}
+
+.editor-section-item:hover {
+  background: #f5f7f8;
+}
+
+.editor-section-item.is-selected {
+  border-color: #d1e3da;
+  background: #edf5f1;
+  color: #265b47;
+  font-weight: 600;
+}
+
+.editor-panel-details {
+  margin-top: 14px;
+  color: var(--editor-muted);
+  font-size: 11px;
+}
+
+.editor-panel-details summary {
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.editor-add-section {
+  margin-top: 22px;
+  border-top: 1px solid var(--editor-line);
+  padding-top: 20px;
+}
+
+.editor-add-section h2 {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.editor-add-buttons {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.editor-add-buttons > button {
+  min-height: 37px;
+  justify-content: flex-start;
+  border-radius: 8px;
+  box-shadow: none;
+  font-size: 11px;
+}
 
 .editor-stage {
   display: flex;
   min-width: 0;
+  min-height: 0;
   flex-direction: column;
-  }
+  overflow: hidden;
+  border: 1px solid #dfe4e8;
+  border-radius: 12px;
+  background: #e8ecf0;
+  box-shadow: 0 3px 12px #25313c06;
+}
 
 .editor-devicebar {
   display: flex;
+  min-height: 48px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  }
+  gap: 8px;
+  border-bottom: 1px solid var(--editor-line);
+  background: #fafbfc;
+  padding: 10px 14px;
+}
+
+.editor-canvas-hint {
+  color: var(--editor-muted);
+  font-size: 10px;
+}
+
+.editor-canvas-hint > span {
+  color: #85909b;
+}
+
+.editor-devicebar button {
+  border-radius: 6px;
+  font-size: 10px;
+}
 
 .editor-canvas {
+  min-height: 0;
   flex: 1;
-  min-height: 30rem;
-  }
+}
+
+.editor-inspector > h2 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.editor-inspector > .my-4 {
+  display: flex;
+  gap: 5px;
+  margin: 12px 0 20px;
+  border-bottom: 1px solid var(--editor-line);
+  padding-bottom: 16px;
+}
+
+.editor-inspector label {
+  color: #53616d;
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.editor-inspector h3 {
+  border-top: 1px solid var(--editor-line);
+  padding-top: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.editor-inspector .mb-4 > p {
+  color: #8b96a0;
+  font-size: 10px;
+  line-height: 1.6;
+}
 
 .editor-input {
   width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background: white;
-  padding: 0.5rem;
-  font-size: 0.8rem;
-  line-height: 1.7;
-  }
+  border: 1px solid #dfe5e9;
+  border-radius: 8px;
+  background: #fcfcfd;
+  padding: 9px 10px;
+  color: var(--editor-ink);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.editor-input:hover {
+  border-color: #c4ced5;
+}
+
+.editor-input:focus {
+  outline: 2px solid #d1e3da;
+  outline-offset: 1px;
+  border-color: #619781;
+  background: #fff;
+}
+
+.editor-input:disabled, .editor-input[readonly] {
+  background: #f4f6f8;
+  color: #778590;
+}
 
 .home-editor .gjs-one-bg {
-  background-color: #f4f9f4;
-  }
+  background: #f8f9fa;
+}
 
 .home-editor .gjs-two-color {
-  color: #374151;
-  }
+  color: #53616d;
+}
 
 .home-editor .gjs-three-bg {
-  background-color: #016630;
-  }
+  background: var(--editor-accent);
+}
 
 .home-editor .gjs-four-color {
-  color: #016630;
-  }
+  color: var(--editor-accent);
+}
 
 .home-editor .gjs-cv-canvas {
   top: 0;
   width: 100%;
   height: 100%;
-  }
+  background: #e8ecf0;
+}
 
 .home-editor .gjs-block {
   width: 100%;
-  min-height: 3rem;
-  margin: 0.3rem 0;
-  border: 1px solid #d1d5db;
+  min-height: 42px;
+  margin: 3px 0;
+  border: 1px solid var(--editor-line);
+  border-radius: 6px;
   box-shadow: none;
-  }
-
-.home-editor .gjs-layer {
-  background: white;
-  }
-
-.home-editor .gjs-layer-title {
-  font-size: 0.75rem;
-  }
-
-@media (width <= 1100px) {
-  .editor-workspace {
-  grid-template-columns: 12rem minmax(0, 1fr) 15rem;
-  }
 }
 
-@media (width <= 800px) {
+.home-editor .gjs-layer {
+  background: #fafbfc;
+}
+
+.home-editor .gjs-layer-title {
+  font-size: 11px;
+}
+
+@media (width <= 1200px) {
+  .editor-toolbar {
+  gap: 10px;
+  padding: 12px 16px 0;
+}
+
   .editor-workspace {
+  grid-template-columns: 192px minmax(0, 1fr) 256px;
+  gap: 10px;
+  padding: 10px;
+}
+
+  .editor-actions > button, .editor-actions > a {
+  padding: 7px;
+  font-size: 11px;
+}
+
+  .editor-canvas-hint > span {
+  display: none;
+}
+}
+
+@media (width <= 900px) {
+  .home-editor {
   height: auto;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+  .editor-toolbar {
+  align-items: flex-start;
+}
+
+  .editor-identity {
+  width: 100%;
+  grid-template-columns: auto minmax(150px, 1fr);
+}
+
+  .editor-actions {
+  gap: 5px;
+}
+
+  .editor-savebar {
+  align-items: flex-start;
+  padding: 8px 0;
+}
+
+  .editor-save-indicators {
+  gap: 6px 12px;
+}
+
+  .editor-guide-toggle {
+  flex-shrink: 0;
+  padding: 3px;
+}
+
+  .editor-draft-badge {
+  display: none;
+}
+
+  .editor-workspace {
   grid-template-columns: minmax(0, 1fr);
-  }
+}
 
   .editor-stage {
   grid-row: 1;
-  height: 70vh;
-  min-height: 34rem;
-  }
+  height: 65dvh;
+  min-height: 430px;
+}
 
   .editor-sidebar {
-  max-height: 36rem;
-  border-bottom: 1px solid #d1d5db;
-  }
+  max-height: 520px;
+}
 
   .editor-notice {
   flex-direction: column;
-  gap: 0.25rem;
-  }
+  gap: 8px;
+}
+
+  .editor-action-popover {
+  right: auto;
+  left: 0;
+  width: min(280px, calc(100vw - 32px));
+}
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-editor button, .home-editor summary, .home-editor input, .home-editor select, .home-editor textarea {
+  transition: none;
+}
 }
 </style>

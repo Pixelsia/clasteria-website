@@ -97,6 +97,7 @@ try {
   const response = await page.goto(`${baseURL}/editor`, { waitUntil: 'domcontentloaded' });
   assert.equal(response.status(), 200, '/editor responds successfully');
   await ready();
+  if (screenshots) await page.screenshot({ path: `${screenshots}/editor-modern-desktop.png`, fullPage: true });
   assert.equal(await page.getByRole('alert').count(), 0, 'editor loads without an error notice');
   await canvasOrder(publishedIds);
   await eventually(async () => assert.equal(await canvas.locator('.home-section').count(), published.sections.length));

@@ -188,7 +188,7 @@ describe('editor image delivery', () => {
         }
       }
     }
-    expect(heroCount).toBe(9);
+    expect(heroCount).toBe(pageDefinitions.length - 1);
     expect(createPageSection('hero', 'new-home-hero').content.image).toBe(value);
     expect(createPageSection('page-hero', 'new-page-hero').content.image).toBe(value);
     expect(createDefaultPageDocument('codingcraft').sections.find(section => section.kind === 'split-content')?.content.image)

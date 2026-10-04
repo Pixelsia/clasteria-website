@@ -12,7 +12,7 @@ import {
   serializePageDocument, validatePageDocument, pageDefinitions, allowedPageSectionKinds,
   pageDestinations, isRequiredPageSection, pageIcons, serializeArticleMarkdown, isMultilinePageField,
 } from '~/utils/pageDocument';
-import { homeImages } from '~/utils/homeDocument';
+import { homeImages, defaultButtonColor } from '~/utils/homeDocument';
 import type { PageDocument, PageSection, PageSectionKind, PageId } from '~/utils/pageDocument';
 import {
   acknowledgePageDraftSave, canApplyServerPageDraft, createPageDraftClientState, pageStorageKeys,
@@ -1311,6 +1311,12 @@ onBeforeUnmount(() => {
             :value="selected.style.background"
             aria-label="背景色"
             @input="changeStyle('background', ($event.target as HTMLInputElement).value)"
+          ></label>
+          <label class="mb-3 flex items-center justify-between text-xs font-bold">ボタンの色<input
+            type="color"
+            :value="selected.style.button ?? defaultButtonColor"
+            aria-label="ボタンの色"
+            @input="changeStyle('button', ($event.target as HTMLInputElement).value)"
           ></label>
           <label
             for="editor-spacing"

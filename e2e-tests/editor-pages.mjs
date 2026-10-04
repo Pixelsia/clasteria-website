@@ -17,6 +17,7 @@ const definitions = [
   { id: 'home', label: 'Home' },
   { id: 'support', label: 'お問い合わせ' },
   { id: 'articles', label: 'ニュース一覧' },
+  { id: 'access', label: '参加・アクセス' },
   { id: 'onigokko', label: '鬼ごっこ' },
   { id: 'kakurenbo', label: 'かくれんぼ' },
   { id: 'login', label: 'ログイン' },
@@ -355,7 +356,7 @@ try {
     assert.equal(page.url(), maintenanceURL, `${path}: private route still redirects without forwarding query`);
   }
   assert.deepEqual(errors, [], 'no browser errors or Vue warnings across canvas, preview, and public routes');
-  console.log('Passed: all 10 pages, PC/mobile real canvases, legacy Home, page-specific autosave/reload, edit/style isolation, switch cancel, cross-page import rejection, selected-page preview, inactive forms, and safe public routes.');
+  console.log('Passed: all 11 pages, PC/mobile real canvases, legacy Home, page-specific autosave/reload, edit/style isolation, switch cancel, cross-page import rejection, selected-page preview, inactive forms, and safe public routes.');
 }
 finally {
   await browser.close();

@@ -293,6 +293,26 @@ describe('home document content validation', () => {
 });
 
 describe('home document style validation', () => {
+  it('extends legacy v1 files without replacing saved text, images or colors', () => {
+    const document = createDefaultHomeDocument();
+    const hero = document.sections[0]!;
+    hero.content.title = '以前の下書き\nの見出し';
+    hero.style.accent = '#abcdef';
+    hero.content = Object.fromEntries(Object.entries(hero.content).filter(([key]) => !['serverAddress', 'serverNote', 'accessLabel', 'accessTo'].includes(key)));
+    const restored = parseHomeDocument(JSON.stringify(document));
+    expect(restored.sections[0]!.content.title).toBe(hero.content.title);
+    expect(restored.sections[0]!.style).toEqual(hero.style);
+    expect(restored.sections[0]!.content.serverAddress).toBe('play.pixelsia.net');
+    expect(restored.sections[0]!.content.accessTo).toBe('/access');
+  });
+  it('roundtrips a button color independently from the brand accent', () => {
+    const document = createDefaultHomeDocument();
+    document.sections[0]!.style.button = '#123456';
+    const restored = parseHomeDocument(serializeHomeDocument(document));
+    expect(restored.sections[0]!.style.button).toBe('#123456');
+    expect(restored.sections[0]!.style.accent).toBe('#7bf1a8');
+    expect(() => validateHomeDocument(withHeroStyle({ button: 'url(javascript:alert(1))' }))).toThrow();
+  });
   it.each(['compact', 'normal', 'roomy'])('accepts supported spacing %s', (spacing) => {
     expect(() => validateHomeDocument(withHeroStyle({ accent: '#ABCdef', background: '#012345', spacing })))
       .not.toThrow();

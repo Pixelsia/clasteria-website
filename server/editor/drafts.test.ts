@@ -5,7 +5,7 @@ import { createDefaultHomeDocument, serializeHomeDocument } from '../../app/util
 import { createDefaultPageDocument, pageDefinitions, parsePageDocument, serializePageDocument } from '../../app/utils/pageDocument';
 import type { PageId } from '../../app/utils/pageDocument';
 import { parseServerPageDraftResponse } from '../../app/utils/pageDraftClient';
-import { handleDraftRequest, multiPageDraftsSchemaSql } from './drafts';
+import { handleDraftRequest, multiPageDraftsSchemaSql, connectionDraftsSchemaSql } from './drafts';
 import type { DraftEnvironment } from './drafts';
 
 const identity = vi.hoisted(() => ({ owner: 'verified-owner' as string | null }));
@@ -57,7 +57,7 @@ afterEach(() => db.close());
 describe('server draft API with real SQLite conditional writes', () => {
   it('exposes only the fixed editor page registry', () => {
     expect(pageDefinitions.map(({ id }) => id).sort()).toEqual([
-      'home', 'support', 'articles', 'onigokko', 'kakurenbo', 'login', 'register', 'leaderboard', 'codingcraft', 'article-draft',
+      'home', 'support', 'articles', 'access', 'onigokko', 'kakurenbo', 'login', 'register', 'leaderboard', 'codingcraft', 'article-draft',
     ].sort());
   });
   it('saves and loads a validated document across independent requests with increasing revision', async () => {
@@ -71,12 +71,12 @@ describe('server draft API with real SQLite conditional writes', () => {
     expect(await (await handleDraftRequest(request(), env, scope)).json()).toEqual(saved);
     expect((await (await handleDraftRequest(put(1), env, scope)).json()).draft.revision).toBe(2);
   });
-  it.each((['home', 'support', 'article-draft'] as const).flatMap(page => [
+  it.each((['home', 'support', 'access', 'article-draft'] as const).flatMap(page => [
     { page, ending: 'LF', newline: '\n' },
     { page, ending: 'CRLF', newline: '\r\n' },
   ]))('preserves exact $ending prose bytes in $page SQLite inserts, updates and API reloads', async ({ page, newline }) => {
     const document = createDefaultPageDocument(page);
-    const table = page === 'home' ? 'editor_drafts' : 'editor_page_drafts';
+    const table = page === 'home' ? 'editor_drafts' : page === 'access' ? 'editor_connection_drafts' : 'editor_page_drafts';
     for (const baseRevision of [0, 1]) {
       const text = {
         title: `  保存 ${baseRevision + 1}${newline}二行目${newline}${newline}<br> は文字列  `,
@@ -152,7 +152,7 @@ describe('server draft API with real SQLite conditional writes', () => {
       expect(responses.map(response => response.status).sort()).toEqual([200, 409]);
       expect((await handleDraftRequest(put(0, id), env, scope)).status).toBe(409);
     }
-    expect(db.prepare('SELECT page, revision FROM editor_drafts UNION ALL SELECT page, revision FROM editor_page_drafts ORDER BY page').all()).toEqual(
+    expect(db.prepare('SELECT page, revision FROM editor_drafts UNION ALL SELECT page, revision FROM editor_page_drafts UNION ALL SELECT page, revision FROM editor_connection_drafts ORDER BY page').all()).toEqual(
       pageDefinitions.map(({ id }) => ({ page: id, revision: 2 })).sort((a, b) => a.page.localeCompare(b.page)),
     );
   });
@@ -166,7 +166,8 @@ describe('server draft API with real SQLite conditional writes', () => {
     expect(await (await handleDraftRequest(get(), env, scope)).json()).toEqual({ draft: null });
     expect((await handleDraftRequest(put(1, page), env, scope)).status).toBe(409);
     expect((await handleDraftRequest(put(0, page), env, scope)).status).toBe(200);
-    expect(db.prepare('SELECT scope, owner, page, revision FROM editor_drafts UNION ALL SELECT scope, owner, page, revision FROM editor_page_drafts ORDER BY scope, owner').all()).toEqual([
+    const table = page === 'home' ? 'editor_drafts' : page === 'access' ? 'editor_connection_drafts' : 'editor_page_drafts';
+    expect(db.prepare(`SELECT scope, owner, page, revision FROM ${table} ORDER BY scope, owner`).all()).toEqual([
       { scope, owner: 'other-owner', page, revision: 1 },
       { scope, owner: 'verified-owner', page, revision: 1 },
       { scope: 'other-branch', owner: 'verified-owner', page, revision: 1 },
@@ -185,7 +186,7 @@ describe('server draft API with real SQLite conditional writes', () => {
   it.each(pageDefinitions.map(({ id }) => id))('fails closed when a stored %s document belongs to another page', async (page) => {
     expect((await handleDraftRequest(put(0, page), env, scope)).status).toBe(200);
     const otherPage = page === 'home' ? 'support' : 'home';
-    const table = page === 'home' ? 'editor_drafts' : 'editor_page_drafts';
+    const table = page === 'home' ? 'editor_drafts' : page === 'access' ? 'editor_connection_drafts' : 'editor_page_drafts';
     db.prepare(`UPDATE ${table} SET document = ? WHERE scope = ? AND owner = ? AND page = ?`)
       .run(JSON.stringify(createDefaultPageDocument(otherPage)), scope, 'verified-owner', page);
     const response = await handleDraftRequest(request('GET', undefined, {}, page), env, scope);
@@ -296,6 +297,23 @@ describe('validated non-Home storage initialization', () => {
   });
   it('pins the runtime initializer to the exact optional migration SQL', () => {
     expect(multiPageDraftsSchemaSql).toBe(multiPageMigration.replace(/--[^\n]*/g, '').trim());
+    const connectionMigration = readFileSync(new URL('../../migrations/0003_connection_editor_drafts.sql', import.meta.url), 'utf8');
+    expect(connectionDraftsSchemaSql).toBe(connectionMigration.replace(/--[^\n]*/g, '').trim());
+  });
+  it('creates only additive connection storage after a validated save and preserves existing rows', async () => {
+    const before = homeRows();
+    const previousSchema = db.prepare('SELECT * FROM sqlite_master ORDER BY name').all();
+    expect((await handleDraftRequest(request('GET', undefined, {}, 'access'), env, scope)).status).toBe(200);
+    expect(db.prepare('SELECT * FROM sqlite_master ORDER BY name').all()).toEqual(previousSchema);
+    const prepare = vi.spyOn(env.CLASTERIA_DRAFTS!, 'prepare');
+    identity.owner = null;
+    expect((await handleDraftRequest(put(0, 'access'), env, scope)).status).toBe(401);
+    expect(prepare).not.toHaveBeenCalled();
+    identity.owner = 'verified-owner';
+    expect((await handleDraftRequest(put(0, 'access'), env, scope)).status).toBe(200);
+    expect(homeRows()).toEqual(before);
+    expect(tableExists()).toBe(false);
+    expect(db.prepare('SELECT page, revision FROM editor_connection_drafts').all()).toEqual([{ page: 'access', revision: 1 }]);
   });
   it('keeps every GET read-only and returns no draft before initialization', async () => {
     const before = homeRows();

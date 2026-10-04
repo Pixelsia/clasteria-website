@@ -53,6 +53,27 @@ withDefaults(defineProps<{ content?: Record<string, string>; aboutId?: string; i
             {{ content.secondaryLabel }}
           </UButton>
         </div>
+        <div class="hero-connection w-full max-w-md rounded-xl border border-white/25 bg-neutral-950/45 px-5 py-4">
+          <p class="text-xs font-bold tracking-wide text-neutral-200">
+            仮サーバーアドレス
+          </p>
+          <p class="mt-2 break-all font-mono text-xl font-bold text-white md:text-2xl">
+            {{ content.serverAddress }}
+          </p>
+          <p class="mt-2 whitespace-pre-line text-xs leading-6 text-neutral-200">
+            {{ content.serverNote }}
+          </p>
+          <NuxtLink
+            :to="content.accessTo"
+            class="mt-3 inline-flex items-center gap-2 text-sm font-bold text-white underline underline-offset-4"
+          >
+            {{ content.accessLabel }}
+            <UIcon
+              name="i-heroicons-arrow-right"
+              class="size-4"
+            />
+          </NuxtLink>
+        </div>
         <a
           v-if="aboutId"
           :href="`#${aboutId}`"

@@ -27,11 +27,11 @@ function article(): PageDocument {
 }
 
 describe('bounded page document registry and defaults', () => {
-  it('exposes exactly the ten editable destinations without claiming hidden pages are public', () => {
+  it('exposes the eleven editable destinations without claiming hidden pages are public', () => {
     expect(pageDefinitions.map(page => page.id)).toEqual([
-      'home', 'support', 'articles', 'onigokko', 'kakurenbo', 'login', 'register', 'leaderboard', 'codingcraft', 'article-draft',
+      'home', 'support', 'articles', 'access', 'onigokko', 'kakurenbo', 'login', 'register', 'leaderboard', 'codingcraft', 'article-draft',
     ]);
-    expect(pageDefinitions.filter(page => page.published).map(page => page.id)).toEqual(['home', 'support', 'articles']);
+    expect(pageDefinitions.filter(page => page.published).map(page => page.id)).toEqual(['home', 'support', 'articles', 'access']);
     expect(isPageId('support')).toBe(true);
     for (const value of ['constructor', '__proto__', '', 'Home', '/support', 'article', null, {}, 1]) {
       expect(isPageId(value)).toBe(false);
@@ -129,7 +129,7 @@ describe('multiline page content', () => {
     const multiline = new Set([
       'eyebrow', 'title', 'description', 'body', 'note', 'placeholder', 'cardTitle', 'cardBody',
       'emptyTitle', 'emptyDescription', 'emailTitle', 'emailDescription', 'emailNote',
-      'discordTitle', 'discordDescription', 'discordNote', 'itemTitle', 'itemBody',
+      'discordTitle', 'discordDescription', 'discordNote', 'serverNote', 'itemTitle', 'itemBody',
       ...Array.from({ length: 6 }, (_, index) => {
         const number = index + 1;
         return [`item${number}`, `item${number}Title`, `item${number}Body`, `question${number}`, `answer${number}`];

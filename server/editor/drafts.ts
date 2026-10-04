@@ -25,6 +25,17 @@ export const multiPageDraftsSchemaSql = `CREATE TABLE IF NOT EXISTS editor_page_
   PRIMARY KEY (scope, owner, page)
 );`;
 
+// New connection-page backups use an additive table; existing CHECK constraints and rows stay intact.
+export const connectionDraftsSchemaSql = `CREATE TABLE IF NOT EXISTS editor_connection_drafts (
+  scope TEXT NOT NULL,
+  owner TEXT NOT NULL,
+  page TEXT NOT NULL CHECK (page = 'access'),
+  document TEXT NOT NULL CHECK (length(CAST(document AS BLOB)) <= 100000),
+  revision INTEGER NOT NULL CHECK (revision >= 1),
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (scope, owner, page)
+);`;
+
 class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
@@ -89,12 +100,12 @@ export async function handleDraftRequest(request: Request, env: DraftEnvironment
     // Bind the document to this build's branch and verified identity. Neither is client supplied.
     const db = env.CLASTERIA_DRAFTS;
     // Only these server-selected literals reach SQL. Keep legacy Home storage unchanged.
-    const table = page === 'home' ? 'editor_drafts' : 'editor_page_drafts';
+    const table = page === 'home' ? 'editor_drafts' : page === 'access' ? 'editor_connection_drafts' : 'editor_page_drafts';
     if (request.method === 'GET') {
       if (page !== 'home') {
         // Reads never initialize storage. An absent new table means no non-Home drafts yet.
-        const exists = await db.prepare('SELECT name FROM sqlite_master WHERE type = \'table\' AND name = \'editor_page_drafts\'')
-          .first<{ name: string }>();
+        const exists = await db.prepare('SELECT name FROM sqlite_master WHERE type = \'table\' AND name = ?')
+          .bind(table).first<{ name: string }>();
         if (!exists) return json({ draft: null });
       }
       const row = await db.prepare(`SELECT document, revision, updated_at FROM ${table} WHERE scope = ? AND owner = ? AND page = ?`)
@@ -121,7 +132,7 @@ export async function handleDraftRequest(request: Request, env: DraftEnvironment
     catch { throw new ApiError(422, 'invalid_document', '下書きの内容またはバージョンが正しくありません。'); }
     // Only a fully authenticated, preview-scoped, same-origin, validated non-Home save may create this table.
     // IF NOT EXISTS is safe when independent first saves race; Home schema and data are never touched.
-    if (page !== 'home') await db.prepare(multiPageDraftsSchemaSql).run();
+    if (page !== 'home') await db.prepare(page === 'access' ? connectionDraftsSchemaSql : multiPageDraftsSchemaSql).run();
     const baseRevision = body.baseRevision as number;
     const timestamp = new Date().toISOString();
     // A single conditional write is the revision check. A read-then-write or KV put would lose concurrent edits.

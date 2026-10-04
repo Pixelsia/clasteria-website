@@ -7,7 +7,8 @@ export const maxHomeDocumentBytes = 100_000;
 export const maxHomeSections = 12;
 
 export type HomeSectionKind = 'hero' | 'about' | 'news' | 'contact';
-export type HomeSectionStyle = { accent: string; background: string; spacing: 'compact' | 'normal' | 'roomy' };
+export type HomeSectionStyle = { accent: string; button?: string; background: string; spacing: 'compact' | 'normal' | 'roomy' };
+export const defaultButtonColor = '#26715b';
 export type HomeSection = {
   id: string;
   kind: HomeSectionKind;
@@ -29,6 +30,8 @@ export const homeSectionTemplates: Record<HomeSectionKind, Omit<HomeSection, 'id
       description: 'Minecraft の世界を舞台に、\n新しい体験をつくる Pixelsia のプロジェクト。',
       image: '/images/clasteria/portal-plaza.png', imageAlt: '',
       primaryLabel: 'お知らせ', primaryTo: '/articles', secondaryLabel: 'お問い合わせ', secondaryTo: '/support',
+      serverAddress: 'play.pixelsia.net', serverNote: '仮アドレス · 正式な接続先と公開時期は未定です',
+      accessLabel: '参加・アクセスのご案内', accessTo: '/access',
     },
     style: { accent: '#7bf1a8', background: '#030712', spacing: 'normal' },
   },
@@ -40,12 +43,12 @@ export const homeSectionTemplates: Record<HomeSectionKind, Omit<HomeSection, 'id
       cardTitle: 'Clasteria の情報はこちらから', cardBody: 'お知らせの確認はニュースへ。ご質問やご相談は、メール・Discord の窓口をご利用ください。',
       primaryLabel: 'ニュースを見る', primaryTo: '/articles', secondaryLabel: 'お問い合わせ', secondaryTo: '/support',
     },
-    style: { accent: '#016630', background: '#ffffff', spacing: 'normal' },
+    style: { accent: '#26715b', background: '#ffffff', spacing: 'normal' },
   },
   news: {
     kind: 'news',
     content: { eyebrow: 'NEWSROOM', title: 'ニュース', description: 'Clasteria からのお知らせをお届けします。', primaryLabel: 'すべて見る' },
-    style: { accent: '#016630', background: '#ffffff', spacing: 'normal' },
+    style: { accent: '#26715b', background: '#ffffff', spacing: 'normal' },
   },
   contact: {
     kind: 'contact',
@@ -61,6 +64,7 @@ export const homeFieldLabels: Record<string, string> = {
   eyebrow: '小見出し', title: '見出し', brand: 'ブランド名', description: '説明文', image: '背景画像', imageAlt: '画像の説明',
   cardTitle: 'カードの見出し', cardBody: 'カードの説明文', primaryLabel: 'ボタンの文字', primaryTo: 'ボタンのリンク',
   secondaryLabel: '第 2 ボタンの文字', secondaryTo: '第 2 ボタンのリンク',
+  serverAddress: '仮サーバーアドレス', serverNote: '接続先についての補足', accessLabel: '参加案内のリンク文字', accessTo: '参加案内のリンク先',
 };
 
 export const homeImages = [
@@ -93,7 +97,19 @@ function exactKeys(value: Record<string, unknown>, keys: string[], label: string
 
 export function isSafeHomeLink(value: string): boolean {
   // A small public-destination allowlist also prevents restoring unpublished routes.
-  return ['/', '/articles', '/support', 'https://codingcraft.pixelsia.net/login', 'https://discord.gg/TwTPa4Yp4h', 'mailto:support@pixelsia.net'].includes(value);
+  return ['/', '/articles', '/support', '/access', 'https://codingcraft.pixelsia.net/login', 'https://discord.gg/TwTPa4Yp4h', 'mailto:support@pixelsia.net'].includes(value);
+}
+
+/** Optional button color preserves existing v1 files and server drafts byte semantics. */
+export function validateSectionStyle(input: unknown): HomeSectionStyle {
+  const style = object(input, 'スタイル');
+  exactKeys(style, ['accent', 'background', 'spacing', ...(Object.hasOwn(style, 'button') ? ['button'] : [])], 'スタイル');
+  for (const key of ['accent', 'background', ...(Object.hasOwn(style, 'button') ? ['button'] : [])]) {
+    if (typeof style[key] !== 'string' || !/^#[\da-f]{6}$/i.test(style[key] as string)) fail('色は 6 桁の HEX 形式にしてください。');
+  }
+  if (typeof style.spacing !== 'string' || !['compact', 'normal', 'roomy'].includes(style.spacing)) fail('余白の指定が無効です。');
+  return { accent: style.accent as string, background: style.background as string, spacing: style.spacing as HomeSectionStyle['spacing'],
+    ...(Object.hasOwn(style, 'button') ? { button: style.button as string } : {}) };
 }
 
 export function validateHomeDocument(input: unknown): HomeDocument {
@@ -109,7 +125,9 @@ export function validateHomeDocument(input: unknown): HomeDocument {
     ids.add(section.id);
     if (typeof section.kind !== 'string' || !Object.hasOwn(homeSectionTemplates, section.kind)) fail('未対応のセクションです。');
     const kind = section.kind as HomeSectionKind;
-    const content = object(section.content, '文章');
+    const sourceContent = object(section.content, '文章');
+    // Add the new invitation fields to legacy Home drafts without replacing any saved text.
+    const content = kind === 'hero' ? { ...sourceContent, ...Object.fromEntries(['serverAddress', 'serverNote', 'accessLabel', 'accessTo'].filter(key => !Object.hasOwn(sourceContent, key)).map(key => [key, homeSectionTemplates.hero.content[key]])) } : sourceContent;
     exactKeys(content, Object.keys(homeSectionTemplates[kind].content), '文章');
     const cleanContent: Record<string, string> = {};
     for (const [key, field] of Object.entries(content)) {
@@ -118,11 +136,7 @@ export function validateHomeDocument(input: unknown): HomeDocument {
       if (key === 'image' && !homeImages.some(image => image.value === field)) fail('画像は登録済みの素材を選んでください。');
       cleanContent[key] = field;
     }
-    const style = object(section.style, 'スタイル');
-    exactKeys(style, ['accent', 'background', 'spacing'], 'スタイル');
-    if (typeof style.accent !== 'string' || !/^#[\da-f]{6}$/i.test(style.accent) || typeof style.background !== 'string' || !/^#[\da-f]{6}$/i.test(style.background)) fail('色は 6 桁の HEX 形式にしてください。');
-    if (typeof style.spacing !== 'string' || !['compact', 'normal', 'roomy'].includes(style.spacing)) fail('余白の指定が無効です。');
-    return { id: section.id, kind, content: cleanContent, style: { accent: style.accent, background: style.background, spacing: style.spacing as HomeSectionStyle['spacing'] } };
+    return { id: section.id, kind, content: cleanContent, style: validateSectionStyle(section.style) };
   });
   if (sections.filter(section => section.kind === 'hero').length !== 1) fail('メインビジュアルは 1 個必要です。');
   return { version: 1, page: 'home', sections };

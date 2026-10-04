@@ -8,7 +8,7 @@ defineProps<{ section: HomeSection; aboutId?: string; imageProvider?: 'none' }>(
   <div
     class="home-section"
     :class="[`home-section-${section.kind}`, `home-spacing-${section.style.spacing}`]"
-    :style="{ '--home-accent': section.style.accent, '--home-background': section.style.background }"
+    :style="{ '--home-accent': section.style.accent, '--home-background': section.style.background, '--ui-primary': section.style.button ?? '#26715b' }"
     :data-section-id="section.id"
   >
     <TopHero

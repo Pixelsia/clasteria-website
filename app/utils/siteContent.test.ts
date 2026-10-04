@@ -4,7 +4,7 @@ import { accountNavItems, featureCards, primaryNavItems, siteNavItems, supportDi
 describe('initial-release content', () => {
   it('only exposes supported public destinations', () => {
     expect(siteNavItems.map(item => item.to)).toEqual([
-      '/', '/articles', '/support',
+      '/', '/articles', '/access', '/support',
     ]);
     expect(primaryNavItems).toEqual(siteNavItems);
     expect(accountNavItems).toEqual([]);

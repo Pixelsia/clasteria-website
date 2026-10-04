@@ -4,7 +4,7 @@ import type { FooterColumn } from '@nuxt/ui';
 const columns: FooterColumn[] = [
   {
     label: 'Clasteria',
-    children: primaryNavItems.filter(item => ['/', '/articles', '/support'].includes(item.to)),
+    children: primaryNavItems,
   },
   {
     label: '関連サービス',

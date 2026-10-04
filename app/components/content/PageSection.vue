@@ -36,9 +36,12 @@ const content = computed(() => props.section.content);
     class="page-section scroll-mt-24"
     :class="[`page-section-${section.kind}`, `page-spacing-${section.style.spacing}`]"
     :data-section-id="section.id"
+    :data-page="page"
     :style="{
       '--page-accent': section.style.accent,
       '--page-background': section.style.background,
+      '--page-button': section.style.button ?? '#26715b',
+      '--page-glow': `color-mix(in srgb, ${section.style.accent} 18%, transparent)`,
       '--page-background-overlay': `color-mix(in srgb, ${section.style.background} 55%, transparent)`,
       '--page-background-overlay-middle': `color-mix(in srgb, ${section.style.background} 40%, transparent)`,
       '--page-background-overlay-end': `color-mix(in srgb, ${section.style.background} 65%, transparent)`,
@@ -191,7 +194,7 @@ const content = computed(() => props.section.content);
 
 <style scoped>
 .page-section {
-  --ui-primary: var(--page-accent);
+  --ui-primary: var(--page-button);
   --page-padding: 5rem;
 
   background-color: var(--page-background);
@@ -243,7 +246,7 @@ const content = computed(() => props.section.content);
 
 .page-section :deep(.page-content-cta) {
   background:
-    radial-gradient(circle at 84% 18%, rgb(0 166 62 / 18%), transparent 24rem),
+    radial-gradient(circle at 84% 18%, var(--page-glow), transparent 24rem),
     linear-gradient(135deg, var(--page-background), var(--page-background));
 }
 
@@ -255,6 +258,10 @@ const content = computed(() => props.section.content);
 .page-section-support-guide.page-spacing-normal {
   --page-padding-start: 3rem;
   --page-padding-end: 0rem;
+}
+
+.page-section-support-guide.page-spacing-normal[data-page="access"] {
+  --page-padding-end: 5rem;
 }
 
 .page-section-faq.page-spacing-normal {

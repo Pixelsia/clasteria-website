@@ -10,6 +10,7 @@ import {
   maxHomeSections,
   serializeHomeDocument,
   validateHomeDocument,
+  validateSectionStyle,
 } from './homeDocument';
 import type { HomeSectionKind, HomeSectionStyle } from './homeDocument';
 import {
@@ -22,6 +23,7 @@ export const pageDefinitions = [
   { id: 'home', label: 'Home', path: '/', published: true, description: '現在公開している Home の下書きです。' },
   { id: 'support', label: 'お問い合わせ', path: '/support', published: true, description: 'メール・Discord 窓口と FAQ の下書きです。' },
   { id: 'articles', label: 'ニュース一覧', path: '/articles', published: true, description: '一覧の見出しや空の状態を編集します。記事本文とは別の下書きです。' },
+  { id: 'access', label: '参加・アクセス', path: '/access', published: true, description: '仮アドレスと参加に向けたご案内の下書きです。' },
   { id: 'onigokko', label: '鬼ごっこ', path: '/onigokko', published: false, description: '非公開の紹介ページです。保存しても公開されません。' },
   { id: 'kakurenbo', label: 'かくれんぼ', path: '/kakurenbo', published: false, description: '非公開の紹介ページです。保存しても公開されません。' },
   { id: 'login', label: 'ログイン', path: '/login', published: false, description: '非公開の画面案です。入力・ログイン機能は動作しません。' },
@@ -49,7 +51,7 @@ export function isPageId(value: unknown): value is PageId {
   return typeof value === 'string' && pageDefinitions.some(page => page.id === value);
 }
 
-const lightStyle: HomeSectionStyle = { accent: '#016630', background: '#ffffff', spacing: 'normal' };
+const lightStyle: HomeSectionStyle = { accent: '#26715b', background: '#ffffff', spacing: 'normal' };
 const darkStyle: HomeSectionStyle = { accent: '#7bf1a8', background: '#030712', spacing: 'normal' };
 
 function template(kind: PageSectionKind, content: Record<string, string>, style = lightStyle): Omit<PageSection, 'id'> {
@@ -185,6 +187,7 @@ const allowedKinds: Record<PageId, readonly PageSectionKind[]> = {
   'home': ['hero', 'about', 'news', 'contact'],
   'support': ['page-hero', 'support-contact', 'support-guide', 'faq', 'cta'],
   'articles': ['page-hero', 'article-list', 'cta'],
+  'access': ['page-hero', 'info-grid', 'support-guide', 'cta'],
   'onigokko': ['page-hero', 'availability', 'info-grid', 'split-content', 'cta', 'notice'],
   'kakurenbo': ['page-hero', 'availability', 'info-grid', 'split-content', 'cta', 'notice'],
   'login': ['page-hero', 'login-form', 'notice', 'cta'],
@@ -236,6 +239,17 @@ function notice(index: number, title: string): PageSection {
 export function createDefaultPageDocument(page: PageId): PageDocument {
   if (page === 'home') return createDefaultHomeDocument();
   const sections: Record<Exclude<PageId, 'home'>, PageSection[]> = {
+    'access': [
+      section('page-hero', 'hero', { eyebrow: 'JOIN CLASTERIA', title: 'Clasteria への\n参加・アクセス', description: '接続先は準備中です。正式なアドレスと参加方法は、決まり次第このページとお知らせでご案内します。', primaryLabel: '最新のお知らせ', primaryTo: '/articles', secondaryLabel: 'Home へ戻る', secondaryTo: '/' }),
+      section('info-grid', 'connection', gridContent('CONNECTION', '接続情報', '以下は準備中の情報です。現時点で接続できることを示すものではありません。', [
+        { title: '仮サーバーアドレス', body: 'play.pixelsia.net\n正式な接続先は未定です。このアドレスではまだ接続しないでください。', icon: 'i-heroicons-command-line' },
+        { title: '対応する Minecraft の版', body: '準備中です。Java 版・統合版の対応は、確定後にご案内します。', icon: 'i-heroicons-cube' },
+        { title: '対応バージョン・ポート', body: '準備中です。使用するバージョンやポート番号は、接続先と合わせてご案内します。', icon: 'i-heroicons-information-circle' },
+        { title: '公開時期・参加受付', body: '準備中です。参加できる時期や受付方法は、お知らせをご確認ください。', icon: 'i-heroicons-clock' },
+      ])),
+      section('support-guide', 'before-joining', { eyebrow: 'BEFORE YOU JOIN', title: '参加する前に', description: '正式な案内が公開されたら、次の順でご確認ください。', item1: 'お知らせで参加受付と接続情報を確認する', item2: '案内された Minecraft の版・バージョンを用意する', item3: '公開された参加手順とルールを確認してから接続する', note: '確認したいことがある場合は、お問い合わせ窓口をご利用ください。' }),
+      section('cta', 'contact', { eyebrow: 'SUPPORT', title: '参加について知りたいことは？', description: 'ご質問はメール・Discord のお問い合わせ窓口へ。', primaryLabel: 'お問い合わせ', primaryTo: '/support', secondaryLabel: 'Home へ戻る', secondaryTo: '/' }),
+    ],
     'support': [
       section('page-hero', 'hero', { eyebrow: 'SUPPORT', title: 'お手伝いできることは\nありますか。', description: 'ゲームへの参加、ご質問、不具合のご報告。\nClasteria に関するお問い合わせはこちらから。' }),
       section('support-contact', 'contact'), section('support-guide', 'before-contact'), section('faq', 'faq'),
@@ -330,11 +344,7 @@ export function validatePageDocument(input: unknown, expectedPage?: PageId): Pag
       }
       cleanContent[key] = field;
     }
-    const style = object(value.style, 'スタイル');
-    exactKeys(style, ['accent', 'background', 'spacing'], 'スタイル');
-    if (typeof style.accent !== 'string' || !/^#[\da-f]{6}$/i.test(style.accent) || typeof style.background !== 'string' || !/^#[\da-f]{6}$/i.test(style.background)) fail('色は 6 桁の HEX 形式にしてください。');
-    if (typeof style.spacing !== 'string' || !['compact', 'normal', 'roomy'].includes(style.spacing)) fail('余白の指定が無効です。');
-    return { id: value.id, kind, content: cleanContent, style: { accent: style.accent, background: style.background, spacing: style.spacing as HomeSectionStyle['spacing'] } };
+    return { id: value.id, kind, content: cleanContent, style: validateSectionStyle(value.style) };
   });
   const requiredKind = page === 'article-draft' ? 'article-meta' : 'page-hero';
   if (sections.filter(section => section.kind === requiredKind).length !== 1) fail(`${pageSectionLabels[requiredKind]}は 1 個必要です。`);

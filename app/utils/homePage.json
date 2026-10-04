@@ -15,7 +15,11 @@
         "primaryLabel": "お知らせ",
         "primaryTo": "/articles",
         "secondaryLabel": "お問い合わせ",
-        "secondaryTo": "/support"
+        "secondaryTo": "/support",
+        "serverAddress": "play.pixelsia.net",
+        "serverNote": "仮アドレス · 正式な接続先と公開時期は未定です",
+        "accessLabel": "参加・アクセスのご案内",
+        "accessTo": "/access"
       },
       "style": {
         "accent": "#7bf1a8",
@@ -38,7 +42,7 @@
         "secondaryTo": "/support"
       },
       "style": {
-        "accent": "#016630",
+        "accent": "#26715b",
         "background": "#ffffff",
         "spacing": "normal"
       }
@@ -53,7 +57,7 @@
         "primaryLabel": "すべて見る"
       },
       "style": {
-        "accent": "#016630",
+        "accent": "#26715b",
         "background": "#ffffff",
         "spacing": "normal"
       }

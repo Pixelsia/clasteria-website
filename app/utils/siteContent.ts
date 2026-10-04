@@ -40,6 +40,7 @@ export type TodoItem = {
 export const primaryNavItems = [
   { label: 'Home', to: '/', eyebrow: 'HOME' },
   { label: 'ニュース', to: '/articles', eyebrow: 'NEWS' },
+  { label: '参加・アクセス', to: '/access', eyebrow: 'ACCESS' },
   { label: 'お問い合わせ', to: '/support', eyebrow: 'SUPPORT' },
 ] satisfies SiteNavItem[];
 
